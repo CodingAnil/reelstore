@@ -15,6 +15,7 @@ export interface Bundle {
   features: string[];
   status: 'draft' | 'active' | 'inactive';
   isFeatured: boolean;
+  downloadUrl: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -26,6 +27,23 @@ export interface Category {
   demoVideoUrl: string;
   description: string;
   status: 'active' | 'inactive';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Order {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  bundleId: string | null;
+  bundleName: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'paid' | 'failed' | 'refunded';
+  paymentId: string | null;
+  downloadUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +64,7 @@ function mapBundle(row: Record<string, unknown>): Bundle {
     features: Array.isArray(row.features) ? (row.features as string[]) : [],
     status: (row.status as 'draft' | 'active' | 'inactive') || 'draft',
     isFeatured: Boolean(row.is_featured),
+    downloadUrl: (row.download_url as string) || '',
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -59,6 +78,25 @@ function mapCategory(row: Record<string, unknown>): Category {
     demoVideoUrl: (row.demo_video_url as string) || '',
     description: (row.description as string) || '',
     status: (row.status as 'active' | 'inactive') || 'active',
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+function mapOrder(row: Record<string, unknown>): Order {
+  return {
+    id: row.id as string,
+    orderNumber: (row.order_number as string) || '',
+    customerName: (row.customer_name as string) || '',
+    customerEmail: (row.customer_email as string) || '',
+    customerPhone: (row.customer_phone as string) || '',
+    bundleId: (row.bundle_id as string) || null,
+    bundleName: (row.bundle_name as string) || '',
+    amount: Number(row.amount) || 0,
+    currency: (row.currency as string) || 'INR',
+    status: (row.status as 'pending' | 'paid' | 'failed' | 'refunded') || 'pending',
+    paymentId: (row.payment_id as string) || null,
+    downloadUrl: (row.download_url as string) || null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -101,6 +139,21 @@ export const bundleService = {
     return data ? mapBundle(data as Record<string, unknown>) : null;
   },
 
+  async getBundleById(id: string): Promise<Bundle | null> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('bundles')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching bundle by id:', error.message);
+      return null;
+    }
+    return data ? mapBundle(data as Record<string, unknown>) : null;
+  },
+
   async getAllBundles(): Promise<Bundle[]> {
     const supabase = createClient();
     const { data, error } = await supabase
@@ -133,6 +186,7 @@ export const bundleService = {
         features: bundle.features,
         status: bundle.status,
         is_featured: bundle.isFeatured,
+        download_url: bundle.downloadUrl,
       })
       .select()
       .single();
@@ -160,6 +214,7 @@ export const bundleService = {
     if (bundle.features !== undefined) updateData.features = bundle.features;
     if (bundle.status !== undefined) updateData.status = bundle.status;
     if (bundle.isFeatured !== undefined) updateData.is_featured = bundle.isFeatured;
+    if (bundle.downloadUrl !== undefined) updateData.download_url = bundle.downloadUrl;
 
     const { data, error } = await supabase
       .from('bundles')
@@ -270,5 +325,136 @@ export const categoryService = {
       return false;
     }
     return true;
+  },
+};
+
+// ─── ORDER SERVICE ─────────────────────────────────────────────────────────────
+
+export const orderService = {
+  generateOrderNumber(): string {
+    return `RS-${Date.now().toString().slice(-8)}`;
+  },
+
+  async createOrder(order: {
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+    bundleId: string;
+    bundleName: string;
+    amount: number;
+    downloadUrl: string;
+  }): Promise<Order | null> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('orders')
+      .insert({
+        order_number: orderService.generateOrderNumber(),
+        customer_name: order.customerName,
+        customer_email: order.customerEmail,
+        customer_phone: order.customerPhone,
+        bundle_id: order.bundleId,
+        bundle_name: order.bundleName,
+        amount: order.amount,
+        currency: 'INR',
+        status: 'pending',
+        download_url: order.downloadUrl,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating order:', error.message);
+      return null;
+    }
+    return mapOrder(data as Record<string, unknown>);
+  },
+
+  async markOrderPaid(orderId: string, paymentId?: string): Promise<Order | null> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('orders')
+      .update({
+        status: 'paid',
+        payment_id: paymentId || `PAY-${Date.now()}`,
+      })
+      .eq('id', orderId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error marking order paid:', error.message);
+      return null;
+    }
+    return mapOrder(data as Record<string, unknown>);
+  },
+
+  async getOrderById(orderId: string): Promise<Order | null> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching order:', error.message);
+      return null;
+    }
+    return data ? mapOrder(data as Record<string, unknown>) : null;
+  },
+
+  async getOrderByNumber(orderNumber: string): Promise<Order | null> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('order_number', orderNumber)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching order by number:', error.message);
+      return null;
+    }
+    return data ? mapOrder(data as Record<string, unknown>) : null;
+  },
+
+  async getAllOrders(): Promise<Order[]> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching all orders:', error.message);
+      return [];
+    }
+    return (data || []).map((row) => mapOrder(row as Record<string, unknown>));
+  },
+
+  async getOrderStats(): Promise<{
+    totalRevenue: number;
+    totalOrders: number;
+    paidOrders: number;
+    pendingOrders: number;
+  }> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('orders')
+      .select('amount, status');
+
+    if (error) {
+      console.error('Error fetching order stats:', error.message);
+      return { totalRevenue: 0, totalOrders: 0, paidOrders: 0, pendingOrders: 0 };
+    }
+
+    const orders = data || [];
+    const paidOrders = orders.filter((o) => o.status === 'paid');
+    return {
+      totalRevenue: paidOrders.reduce((sum, o) => sum + Number(o.amount), 0),
+      totalOrders: orders.length,
+      paidOrders: paidOrders.length,
+      pendingOrders: orders.filter((o) => o.status === 'pending').length,
+    };
   },
 };

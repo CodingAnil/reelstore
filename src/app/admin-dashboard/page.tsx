@@ -4,36 +4,9 @@ import Link from 'next/link';
 import AppLogo from '@/components/ui/AppLogo';
 import AppImage from '@/components/ui/AppImage';
 import Icon from '@/components/ui/AppIcon';
-import { bundleService, categoryService, Bundle, Category } from '@/lib/services/reelstoreService';
+import { bundleService, categoryService, orderService, Bundle, Category, Order } from '@/lib/services/reelstoreService';
 
 type Tab = 'overview' | 'bundles' | 'categories' | 'orders' | 'settings';
-
-interface Order {
-  id: string;
-  customer: string;
-  email: string;
-  bundle: string;
-  amount: number;
-  status: 'paid' | 'pending' | 'failed';
-  date: string;
-}
-
-const mockOrders: Order[] = [
-  { id: 'RS-28471', customer: 'Priya Sharma', email: 'priya.sharma@gmail.com', bundle: 'Hybrid Reels Bundle', amount: 79, status: 'paid', date: '12 Mar 2026' },
-  { id: 'RS-28470', customer: 'Arjun Mehta', email: 'arjun.m@outlook.com', bundle: 'Hybrid Reels Bundle', amount: 79, status: 'paid', date: '12 Mar 2026' },
-  { id: 'RS-28469', customer: 'Kavya Reddy', email: 'kavya.r@gmail.com', bundle: 'Creature Pack Vol.2', amount: 49, status: 'paid', date: '11 Mar 2026' },
-  { id: 'RS-28468', customer: 'Rohan Verma', email: 'rohan.v@yahoo.com', bundle: 'Hybrid Reels Bundle', amount: 79, status: 'paid', date: '11 Mar 2026' },
-  { id: 'RS-28467', customer: 'Sneha Patel', email: 'sneha.patel@gmail.com', bundle: 'Hybrid Reels Bundle', amount: 79, status: 'pending', date: '10 Mar 2026' },
-  { id: 'RS-28466', customer: 'Vikram Singh', email: 'vikram.s@gmail.com', bundle: 'Creature Pack Vol.2', amount: 49, status: 'failed', date: '10 Mar 2026' },
-  { id: 'RS-28465', customer: 'Ananya Iyer', email: 'ananya.i@gmail.com', bundle: 'Hybrid Reels Bundle', amount: 79, status: 'paid', date: '09 Mar 2026' },
-];
-
-const statsCards = [
-  { label: 'Total Revenue', value: '₹2,24,913', change: '+18.4%', icon: '💰', color: 'text-green-400' },
-  { label: 'Total Orders', value: '2,847', change: '+12.1%', icon: '📦', color: 'text-accent' },
-  { label: 'Conversion Rate', value: '4.7%', change: '+0.8%', icon: '📈', color: 'text-purple-400' },
-  { label: 'Visitors Today', value: '1,284', change: '+24.3%', icon: '👁', color: 'text-blue-400' },
-];
 
 const emptyBundle = {
   name: '',
@@ -49,6 +22,7 @@ const emptyBundle = {
   features: [] as string[],
   status: 'draft\' as \'draft\' | \'active\' | \'inactive',
   isFeatured: false,
+  downloadUrl: '',
 };
 
 const emptyCategory = {
@@ -85,6 +59,20 @@ export default function AdminDashboard() {
   const [categorySaving, setCategorySaving] = useState(false);
   const [categoryDeleteId, setCategoryDeleteId] = useState<string | null>(null);
 
+  // Orders state
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderSearch, setOrderSearch] = useState('');
+
+  // Analytics state
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    totalOrders: 0,
+    paidOrders: 0,
+    pendingOrders: 0,
+  });
+  const [statsLoading, setStatsLoading] = useState(false);
+
   const loadBundles = useCallback(async () => {
     setBundlesLoading(true);
     const data = await bundleService.getAllBundles();
@@ -99,10 +87,29 @@ export default function AdminDashboard() {
     setCategoriesLoading(false);
   }, []);
 
+  const loadOrders = useCallback(async () => {
+    setOrdersLoading(true);
+    const data = await orderService.getAllOrders();
+    setOrders(data);
+    setOrdersLoading(false);
+  }, []);
+
+  const loadStats = useCallback(async () => {
+    setStatsLoading(true);
+    const data = await orderService.getOrderStats();
+    setStats(data);
+    setStatsLoading(false);
+  }, []);
+
   useEffect(() => {
     if (isLoggedIn && activeTab === 'bundles') loadBundles();
     if (isLoggedIn && activeTab === 'categories') loadCategories();
-  }, [isLoggedIn, activeTab, loadBundles, loadCategories]);
+    if (isLoggedIn && activeTab === 'orders') loadOrders();
+    if (isLoggedIn && activeTab === 'overview') {
+      loadStats();
+      loadOrders();
+    }
+  }, [isLoggedIn, activeTab, loadBundles, loadCategories, loadOrders, loadStats]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,6 +145,7 @@ export default function AdminDashboard() {
       features: bundle.features,
       status: bundle.status,
       isFeatured: bundle.isFeatured,
+      downloadUrl: bundle.downloadUrl,
     });
     setBundleFeaturesInput(bundle.features.join('\n'));
     setShowBundleModal(true);
@@ -212,6 +220,22 @@ export default function AdminDashboard() {
     loadCategories();
   };
 
+  const filteredOrders = orders.filter((o) => {
+    if (!orderSearch) return true;
+    const q = orderSearch.toLowerCase();
+    return (
+      o.orderNumber.toLowerCase().includes(q) ||
+      o.customerName.toLowerCase().includes(q) ||
+      o.customerEmail.toLowerCase().includes(q) ||
+      o.bundleName.toLowerCase().includes(q)
+    );
+  });
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
   // ─── Login screen ─────────────────────────────────────────────────────────────
   if (!isLoggedIn) {
     return (
@@ -273,6 +297,20 @@ export default function AdminDashboard() {
     return 'bg-red-500/20 text-red-400 border border-red-500/30';
   };
 
+  const orderStatusColor = (status: string) => {
+    if (status === 'paid') return 'bg-green-500/15 text-green-400 border border-green-500/25';
+    if (status === 'pending') return 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/25';
+    if (status === 'refunded') return 'bg-blue-500/15 text-blue-400 border border-blue-500/25';
+    return 'bg-red-500/15 text-red-400 border border-red-500/25';
+  };
+
+  const orderStatusDot = (status: string) => {
+    if (status === 'paid') return 'bg-green-400';
+    if (status === 'pending') return 'bg-yellow-400';
+    if (status === 'refunded') return 'bg-blue-400';
+    return 'bg-red-400';
+  };
+
   return (
     <div className="min-h-screen bg-bg text-fg flex">
       {/* Sidebar */}
@@ -314,7 +352,7 @@ export default function AdminDashboard() {
             </button>
             <div>
               <h1 className="font-display font-800 text-fg text-lg capitalize">{activeTab}</h1>
-              <p className="text-fg-dim text-xs">ReelStore Admin · 19 Mar 2026</p>
+              <p className="text-fg-dim text-xs">ReelStore Admin</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -331,54 +369,79 @@ export default function AdminDashboard() {
           {/* ─── OVERVIEW TAB ─────────────────────────────────────────────────── */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
+              {/* Live Stats */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {statsCards.map((stat, i) => (
+                {[
+                  {
+                    label: 'Total Revenue',
+                    value: statsLoading ? '...' : `₹${stats.totalRevenue.toLocaleString('en-IN')}`,
+                    icon: '💰',
+                    color: 'text-green-400',
+                  },
+                  {
+                    label: 'Total Orders',
+                    value: statsLoading ? '...' : stats.totalOrders.toString(),
+                    icon: '📦',
+                    color: 'text-accent',
+                  },
+                  {
+                    label: 'Paid Orders',
+                    value: statsLoading ? '...' : stats.paidOrders.toString(),
+                    icon: '✅',
+                    color: 'text-purple-400',
+                  },
+                  {
+                    label: 'Pending Orders',
+                    value: statsLoading ? '...' : stats.pendingOrders.toString(),
+                    icon: '⏳',
+                    color: 'text-yellow-400',
+                  },
+                ].map((stat, i) => (
                   <div key={i} className="glass rounded-2xl p-5 border-gold card-hover">
                     <div className="flex items-start justify-between mb-3">
                       <span className="text-2xl">{stat.icon}</span>
-                      <span className={`text-xs font-700 ${stat.color}`}>{stat.change}</span>
                     </div>
                     <div className={`font-display font-900 text-2xl sm:text-3xl ${stat.color} mb-1`}>{stat.value}</div>
                     <div className="text-fg-dim text-xs font-600">{stat.label}</div>
                   </div>
                 ))}
               </div>
-              <div className="glass rounded-2xl p-6 border-gold">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-display font-800 text-fg text-lg">Revenue (Last 7 Days)</h3>
-                  <span className="text-accent text-sm font-700">₹18,403 this week</span>
-                </div>
-                <div className="flex items-end gap-2 h-32">
-                  {[45, 72, 58, 89, 63, 94, 78].map((h, i) => (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                      <div className="w-full rounded-t-lg transition-all duration-700" style={{ height: `${h}%`, background: i === 6 ? 'linear-gradient(to top, #7C3AED, #9333EA)' : 'linear-gradient(to top, #8B1A1A, #C9A84C)', opacity: i === 6 ? 1 : 0.6 }} />
-                      <span className="text-fg-dim text-[10px]">{['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+
+              {/* Recent Orders */}
               <div className="glass rounded-2xl p-6 border-gold">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-display font-800 text-fg text-lg">Recent Orders</h3>
                   <button onClick={() => setActiveTab('orders')} className="text-accent text-sm font-700 hover:underline">View all →</button>
                 </div>
-                <div className="space-y-3">
-                  {mockOrders.slice(0, 4).map((order) => (
-                    <div key={order.id} className="flex items-center justify-between py-2 border-b border-accent/5 last:border-0">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center font-display font-800 text-bg text-xs">{order.customer[0]}</div>
-                        <div>
-                          <div className="font-display font-600 text-fg text-sm">{order.customer}</div>
-                          <div className="text-fg-dim text-xs">{order.bundle}</div>
+                {ordersLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                  </div>
+                ) : orders.length === 0 ? (
+                  <p className="text-fg-dim text-sm text-center py-6">No orders yet. Orders will appear here after purchases.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {orders.slice(0, 5).map((order) => (
+                      <div key={order.id} className="flex items-center justify-between py-2 border-b border-accent/5 last:border-0">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center font-display font-800 text-bg text-xs">
+                            {order.customerName[0]?.toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-display font-600 text-fg text-sm">{order.customerName}</div>
+                            <div className="text-fg-dim text-xs">{order.bundleName}</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-display font-700 text-fg text-sm">₹{order.amount}</div>
+                          <span className={`text-xs font-700 ${order.status === 'paid' ? 'text-green-400' : order.status === 'pending' ? 'text-yellow-400' : 'text-red-400'}`}>
+                            {order.status.toUpperCase()}
+                          </span>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-display font-700 text-fg text-sm">₹{order.amount}</div>
-                        <span className={`text-xs font-700 ${order.status === 'paid' ? 'text-green-400' : order.status === 'pending' ? 'text-yellow-400' : 'text-red-400'}`}>{order.status.toUpperCase()}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -489,6 +552,11 @@ export default function AdminDashboard() {
                           />
                         </div>
                       ))}
+                      <div className="sm:col-span-2">
+                        <label className="block text-fg-muted text-xs font-600 mb-1 uppercase tracking-wider">Google Drive Download URL</label>
+                        <input type="text" placeholder="https://drive.google.com/drive/folders/..." value={bundleForm.downloadUrl} onChange={(e) => setBundleForm({ ...bundleForm, downloadUrl: e.target.value })} className="input-dark w-full rounded-xl px-4 py-3 text-fg text-sm" />
+                        <p className="text-fg-dim text-xs mt-1">Customers will be redirected here after purchase</p>
+                      </div>
                       <div className="sm:col-span-2">
                         <label className="block text-fg-muted text-xs font-600 mb-1 uppercase tracking-wider">Short Description</label>
                         <input type="text" placeholder="Brief description shown in cards..." value={bundleForm.shortDescription} onChange={(e) => setBundleForm({ ...bundleForm, shortDescription: e.target.value })} className="input-dark w-full rounded-xl px-4 py-3 text-fg text-sm" />
@@ -665,64 +733,78 @@ export default function AdminDashboard() {
                 <div className="flex items-center gap-3">
                   <div className="glass border-gold rounded-xl px-4 py-2 flex items-center gap-2">
                     <Icon name="MagnifyingGlassIcon" size={14} className="text-fg-dim" />
-                    <input type="text" placeholder="Search orders..." className="bg-transparent text-fg text-sm outline-none w-32 sm:w-48 placeholder:text-fg-dim" />
+                    <input
+                      type="text"
+                      placeholder="Search orders..."
+                      value={orderSearch}
+                      onChange={(e) => setOrderSearch(e.target.value)}
+                      className="bg-transparent text-fg text-sm outline-none w-32 sm:w-48 placeholder:text-fg-dim"
+                    />
                   </div>
-                  <button className="glass border-gold rounded-xl px-4 py-2 text-fg-muted text-xs font-600 hover:text-accent transition-colors flex items-center gap-1.5">
-                    <Icon name="ArrowDownTrayIcon" size={14} />
-                    Export CSV
+                  <button onClick={loadOrders} className="glass border-gold rounded-xl px-4 py-2 text-fg-muted text-xs font-600 hover:text-accent transition-colors flex items-center gap-1.5">
+                    <Icon name="ArrowPathIcon" size={14} />
+                    Refresh
                   </button>
                 </div>
               </div>
-              <div className="glass rounded-2xl border-gold overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid rgba(201,168,76,0.15)' }}>
-                        {['Order ID', 'Customer', 'Bundle', 'Amount', 'Status', 'Date', 'Action'].map((h) => (
-                          <th key={h} className="text-left px-4 py-4 text-fg-dim text-xs font-700 uppercase tracking-wider font-display whitespace-nowrap">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {mockOrders.map((order, i) => (
-                        <tr key={order.id} className="transition-colors hover:bg-white/[0.02]" style={{ borderBottom: i < mockOrders.length - 1 ? '1px solid rgba(201,168,76,0.06)' : 'none' }}>
-                          <td className="px-4 py-4"><span className="font-mono text-accent text-xs font-700">{order.id}</span></td>
-                          <td className="px-4 py-4">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full flex items-center justify-center font-display font-800 text-bg text-xs flex-shrink-0" style={{ background: 'linear-gradient(135deg, #8B1A1A, #C9A84C)' }}>{order.customer[0]}</div>
-                              <div>
-                                <div className="font-display font-600 text-fg text-sm whitespace-nowrap">{order.customer}</div>
-                                <div className="text-fg-dim text-xs">{order.email}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4"><span className="text-fg-muted text-sm whitespace-nowrap">{order.bundle}</span></td>
-                          <td className="px-4 py-4"><span className="font-display font-700 text-fg text-sm">₹{order.amount}</span></td>
-                          <td className="px-4 py-4">
-                            <span className={`inline-flex items-center gap-1 text-xs font-700 px-2.5 py-1 rounded-full ${
-                              order.status === 'paid' ?'bg-green-500/15 text-green-400 border border-green-500/25'
-                                : order.status === 'pending' ?'bg-yellow-500/15 text-yellow-400 border border-yellow-500/25' :'bg-red-500/15 text-red-400 border border-red-500/25'
-                            }`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${order.status === 'paid' ? 'bg-green-400' : order.status === 'pending' ? 'bg-yellow-400' : 'bg-red-400'}`} />
-                              {order.status.toUpperCase()}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4"><span className="text-fg-dim text-xs whitespace-nowrap">{order.date}</span></td>
-                          <td className="px-4 py-4"><button className="glass border-gold rounded-lg px-3 py-1.5 text-fg-muted text-xs font-600 hover:text-accent transition-colors whitespace-nowrap">View</button></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+
+              {ordersLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
                 </div>
-                <div className="px-4 py-3 flex items-center justify-between" style={{ borderTop: '1px solid rgba(201,168,76,0.1)' }}>
-                  <span className="text-fg-dim text-xs">Showing {mockOrders.length} of {mockOrders.length} orders</span>
-                  <div className="flex items-center gap-2">
-                    <button className="glass border-gold rounded-lg px-3 py-1.5 text-fg-muted text-xs font-600 hover:text-accent transition-colors">Previous</button>
-                    <button className="bg-primary/30 border border-accent/30 rounded-lg px-3 py-1.5 text-accent text-xs font-700">1</button>
-                    <button className="glass border-gold rounded-lg px-3 py-1.5 text-fg-muted text-xs font-600 hover:text-accent transition-colors">Next</button>
+              ) : (
+                <div className="glass rounded-2xl border-gold overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid rgba(201,168,76,0.15)' }}>
+                          {['Order ID', 'Customer', 'Bundle', 'Amount', 'Status', 'Date'].map((h) => (
+                            <th key={h} className="text-left px-4 py-4 text-fg-dim text-xs font-700 uppercase tracking-wider font-display whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredOrders.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-12 text-center text-fg-dim text-sm">
+                              {orderSearch ? 'No orders match your search.' : 'No orders yet. Orders will appear here after purchases.'}
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredOrders.map((order, i) => (
+                            <tr key={order.id} className="transition-colors hover:bg-white/[0.02]" style={{ borderBottom: i < filteredOrders.length - 1 ? '1px solid rgba(201,168,76,0.06)' : 'none' }}>
+                              <td className="px-4 py-4"><span className="font-mono text-accent text-xs font-700">{order.orderNumber}</span></td>
+                              <td className="px-4 py-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 rounded-full flex items-center justify-center font-display font-800 text-bg text-xs flex-shrink-0" style={{ background: 'linear-gradient(135deg, #8B1A1A, #C9A84C)' }}>
+                                    {order.customerName[0]?.toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <div className="font-display font-600 text-fg text-sm whitespace-nowrap">{order.customerName}</div>
+                                    <div className="text-fg-dim text-xs">{order.customerEmail}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4"><span className="text-fg-muted text-sm whitespace-nowrap">{order.bundleName}</span></td>
+                              <td className="px-4 py-4"><span className="font-display font-700 text-fg text-sm">₹{order.amount}</span></td>
+                              <td className="px-4 py-4">
+                                <span className={`inline-flex items-center gap-1 text-xs font-700 px-2.5 py-1 rounded-full ${orderStatusColor(order.status)}`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${orderStatusDot(order.status)}`} />
+                                  {order.status.toUpperCase()}
+                                </span>
+                              </td>
+                              <td className="px-4 py-4"><span className="text-fg-dim text-xs whitespace-nowrap">{formatDate(order.createdAt)}</span></td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="px-4 py-3 flex items-center justify-between" style={{ borderTop: '1px solid rgba(201,168,76,0.1)' }}>
+                    <span className="text-fg-dim text-xs">Showing {filteredOrders.length} of {orders.length} orders</span>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -731,44 +813,19 @@ export default function AdminDashboard() {
             <div className="space-y-6 max-w-2xl">
               <h2 className="font-display font-800 text-fg text-xl">Store Settings</h2>
               <div className="glass rounded-2xl p-6 border-gold">
-                <h3 className="font-display font-800 text-fg text-lg mb-5 flex items-center gap-2"><span>💰</span> Pricing &amp; Discount</h3>
-                <div className="space-y-4">
-                  {[
-                    { label: 'Original Price (₹)', value: '1499', hint: 'Strikethrough price shown to users' },
-                    { label: 'Offer Price (₹)', value: '79', hint: 'Actual price users pay' },
-                    { label: 'Discount Percentage', value: '95', hint: 'Shown as badge on pricing card' },
-                  ].map((field, i) => (
-                    <div key={i}>
-                      <label className="block text-fg-muted text-xs font-600 mb-1 uppercase tracking-wider">{field.label}</label>
-                      <input type="text" defaultValue={field.value} className="input-dark w-full rounded-xl px-4 py-3 text-fg text-sm" />
-                      <p className="text-fg-dim text-xs mt-1">{field.hint}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="glass rounded-2xl p-6 border-gold">
-                <h3 className="font-display font-800 text-fg text-lg mb-5 flex items-center gap-2"><span>📧</span> Email Delivery (SendGrid)</h3>
-                <div className="space-y-4">
-                  {[
-                    { label: 'SendGrid API Key', value: 'SG.xxxxxxxxxxxxxxxxxxxxxxxx', hint: 'Connect backend API — not stored here' },
-                    { label: 'From Email', value: 'noreply@reelstore.in', hint: 'Sender address for order confirmations' },
-                    { label: 'Support Email', value: 'support@reelstore.in', hint: 'Shown in emails and footer' },
-                  ].map((field, i) => (
-                    <div key={i}>
-                      <label className="block text-fg-muted text-xs font-600 mb-1 uppercase tracking-wider">{field.label}</label>
-                      <input type="text" defaultValue={field.value} className="input-dark w-full rounded-xl px-4 py-3 text-fg text-sm" />
-                      <p className="text-fg-dim text-xs mt-1">{field.hint}</p>
-                    </div>
-                  ))}
-                </div>
+                <h3 className="font-display font-800 text-fg text-lg mb-5 flex items-center gap-2"><span>📦</span> Bundle Download URLs</h3>
+                <p className="text-fg-dim text-sm mb-4">Set the Google Drive download URL for each bundle in the Bundles tab. Customers are redirected to this URL after a successful purchase.</p>
+                <button onClick={() => setActiveTab('bundles')} className="glass border-gold rounded-xl px-5 py-2.5 text-accent text-sm font-700 hover:bg-accent/10 transition-colors">
+                  Go to Bundles →
+                </button>
               </div>
               <div className="glass rounded-2xl p-6 border-gold">
                 <h3 className="font-display font-800 text-fg text-lg mb-5 flex items-center gap-2"><span>🔒</span> Security &amp; Download Protection</h3>
                 <div className="space-y-4">
                   {[
-                    { label: 'Token-Protected Download Links', hint: 'Only paid users can access download URLs' },
-                    { label: 'Email Verification on Purchase', hint: 'Verify email before sending download link' },
-                    { label: 'Rate Limit Checkout (5 req/min)', hint: 'Prevent payment abuse and spam' },
+                    { label: 'Order-Protected Download Links', hint: 'Only users with a paid order ID can access download URLs' },
+                    { label: 'Order Verification on Download', hint: 'Order status must be "paid" to access download page' },
+                    { label: 'Unique Order Numbers', hint: 'Each order gets a unique RS-XXXXXXXX identifier' },
                   ].map((item, i) => (
                     <div key={i} className={`flex items-center justify-between py-3 ${i < 2 ? 'border-b border-accent/10' : ''}`}>
                       <div>
@@ -782,7 +839,24 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               </div>
-              <button className="btn-cta w-full py-4 rounded-2xl text-white font-display font-800 text-lg shadow-cta">Save Settings</button>
+              <div className="glass rounded-2xl p-6 border-gold">
+                <h3 className="font-display font-800 text-fg text-lg mb-3 flex items-center gap-2"><span>📊</span> Database Status</h3>
+                <div className="space-y-2">
+                  {[
+                    { label: 'Bundles Table', status: 'Connected' },
+                    { label: 'Categories Table', status: 'Connected' },
+                    { label: 'Orders Table', status: 'Connected' },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center justify-between py-2">
+                      <span className="text-fg-muted text-sm">{item.label}</span>
+                      <span className="text-green-400 text-xs font-700 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                        {item.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </main>
