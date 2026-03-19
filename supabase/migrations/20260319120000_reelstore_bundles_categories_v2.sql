@@ -2,15 +2,19 @@
 -- ReelStore: Bundles & Categories Dynamic Management (v2)
 -- ============================================================
 
--- 1. ENUM TYPES
+-- 1. DROP EXISTING TABLES (to allow clean recreation after CASCADE enum drop)
+DROP TABLE IF EXISTS public.bundles CASCADE;
+DROP TABLE IF EXISTS public.categories CASCADE;
+
+-- 2. ENUM TYPES (drop and recreate cleanly)
 DROP TYPE IF EXISTS public.bundle_status CASCADE;
 CREATE TYPE public.bundle_status AS ENUM ('draft', 'active', 'inactive');
 
 DROP TYPE IF EXISTS public.category_status CASCADE;
 CREATE TYPE public.category_status AS ENUM ('active', 'inactive');
 
--- 2. CATEGORIES TABLE
-CREATE TABLE IF NOT EXISTS public.categories (
+-- 3. CATEGORIES TABLE
+CREATE TABLE public.categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     reels_count INTEGER NOT NULL DEFAULT 0,
@@ -21,8 +25,8 @@ CREATE TABLE IF NOT EXISTS public.categories (
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. BUNDLES TABLE
-CREATE TABLE IF NOT EXISTS public.bundles (
+-- 4. BUNDLES TABLE
+CREATE TABLE public.bundles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     title TEXT NOT NULL,
@@ -41,13 +45,13 @@ CREATE TABLE IF NOT EXISTS public.bundles (
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- 4. INDEXES
+-- 5. INDEXES
 CREATE INDEX IF NOT EXISTS idx_bundles_status ON public.bundles(status);
 CREATE INDEX IF NOT EXISTS idx_bundles_is_featured ON public.bundles(is_featured);
 CREATE INDEX IF NOT EXISTS idx_bundles_created_at ON public.bundles(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_categories_status ON public.categories(status);
 
--- 5. UPDATED_AT TRIGGER FUNCTION
+-- 6. UPDATED_AT TRIGGER FUNCTION
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -58,7 +62,7 @@ BEGIN
 END;
 $$;
 
--- 6. TRIGGERS
+-- 7. TRIGGERS
 DROP TRIGGER IF EXISTS bundles_updated_at ON public.bundles;
 CREATE TRIGGER bundles_updated_at
     BEFORE UPDATE ON public.bundles
@@ -69,11 +73,11 @@ CREATE TRIGGER categories_updated_at
     BEFORE UPDATE ON public.categories
     FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
--- 7. ENABLE RLS
+-- 8. ENABLE RLS
 ALTER TABLE public.bundles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 
--- 8. RLS POLICIES
+-- 9. RLS POLICIES
 
 -- Bundles: public can read active bundles
 DROP POLICY IF EXISTS "public_read_active_bundles" ON public.bundles;
@@ -109,74 +113,80 @@ TO authenticated
 USING (true)
 WITH CHECK (true);
 
--- 9. MOCK DATA
+-- 10. MOCK DATA
 DO $$
 BEGIN
-    -- Insert categories (skip if already exist by name)
-    INSERT INTO public.categories (id, name, reels_count, description, status)
-    SELECT gen_random_uuid(), v.name, v.reels_count, v.description, 'active'::public.category_status
-    FROM (VALUES
-        ('AI Creatures', 120, 'Stunning AI-generated creature reels — dragons, monsters, mythical beings. Perfect for viral content.'),
-        ('Sci-Fi & Robots', 90, 'Futuristic robots, spaceships, and sci-fi landscapes. Ideal for tech and gaming audiences.'),
-        ('Fantasy Worlds', 80, 'Magical kingdoms, enchanted forests, and epic fantasy scenes. Great for storytelling creators.'),
-        ('Action & Heroes', 100, 'High-energy action sequences and superhero moments. Perfect for motivational content.'),
-        ('Nature & Landscapes', 70, 'Breathtaking nature scenes, mountains, oceans, and sunsets. Ideal for travel and lifestyle.'),
-        ('Urban & Cyberpunk', 60, 'Neon-lit cities, cyberpunk streets, and urban nightscapes. Great for fashion and lifestyle brands.')
-    ) AS v(name, reels_count, description)
-    WHERE NOT EXISTS (
-        SELECT 1 FROM public.categories c WHERE c.name = v.name
-    );
+    -- Insert categories
+    INSERT INTO public.categories (name, reels_count, description, status) VALUES
+        ('AI Creatures', 120, 'Stunning AI-generated creature reels — dragons, monsters, mythical beings. Perfect for viral content.', 'active'::public.category_status),
+        ('Sci-Fi & Robots', 90, 'Futuristic robots, spaceships, and sci-fi landscapes. Ideal for tech and gaming audiences.', 'active'::public.category_status),
+        ('Fantasy Worlds', 80, 'Magical kingdoms, enchanted forests, and epic fantasy scenes. Great for storytelling creators.', 'active'::public.category_status),
+        ('Action & Heroes', 100, 'High-energy action sequences and superhero moments. Perfect for motivational content.', 'active'::public.category_status),
+        ('Nature & Landscapes', 70, 'Breathtaking nature scenes, mountains, oceans, and sunsets. Ideal for travel and lifestyle.', 'active'::public.category_status),
+        ('Urban & Cyberpunk', 60, 'Neon-lit cities, cyberpunk streets, and urban nightscapes. Great for fashion and lifestyle brands.', 'active'::public.category_status);
 
-    -- Insert bundles (skip if already exist by name)
+    -- Insert bundles
     INSERT INTO public.bundles (
-        id, name, title, short_description, full_description,
+        name, title, short_description, full_description,
         thumbnail_url, mockup_image_url,
         original_price, offer_price, reels_count, category,
         features, status, is_featured
-    )
-    SELECT
-        gen_random_uuid(),
-        v.name, v.title, v.short_description, v.full_description,
-        v.thumbnail_url, v.mockup_image_url,
-        v.original_price, v.offer_price, v.reels_count, v.category,
-        v.features::jsonb, v.bundle_status::public.bundle_status, v.is_featured
-    FROM (VALUES
-        (
-            'Hybrid Reels Bundle',
-            '500+ AI Hybrid Reels — Complete Bundle',
-            'The ultimate collection of AI-generated hybrid Instagram reels. No watermark, HD quality, instant download.',
-            'Get access to 500+ premium AI-generated hybrid reels across 6 epic categories. Every reel is HD quality, watermark-free, and ready to post on Instagram. Includes creatures, sci-fi, fantasy, action, nature, and cyberpunk themes. One-time payment, lifetime access.',
-            'https://images.pexels.com/photos/3861969/pexels-photo-3861969.jpeg?auto=compress&cs=tinysrgb&w=800',
-            'https://img.rocket.new/generatedImages/rocket_gen_img_158fd849c-1772149426782.png',
-            1499.00, 79.00, 500, 'All Categories',
-            '["500+ AI Hybrid Readymade Reel Videos","No Logo & No Watermark — Post-Ready","Instant Download Link & Lifetime Access","HD Quality — 100% Non-Copyrighted","Ready to Post on Instagram & Reels","Creatures, Fantasy, Sci-Fi & More Categories","New Reels Added Every Month — Free"]',
-            'active', true
+    ) VALUES
+    (
+        'Hybrid Reels Bundle',
+        '500+ AI Hybrid Reels — Complete Bundle',
+        'The ultimate collection of AI-generated hybrid Instagram reels. No watermark, HD quality, instant download.',
+        'Get access to 500+ premium AI-generated hybrid reels across 6 epic categories. Every reel is HD quality, watermark-free, and ready to post on Instagram. Includes creatures, sci-fi, fantasy, action, nature, and cyberpunk themes. One-time payment, lifetime access.',
+        'https://images.pexels.com/photos/3861969/pexels-photo-3861969.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://img.rocket.new/generatedImages/rocket_gen_img_158fd849c-1772149426782.png',
+        1499.00, 79.00, 500, 'All Categories',
+        jsonb_build_array(
+            '500+ AI Hybrid Readymade Reel Videos',
+            'No Logo & No Watermark — Post-Ready',
+            'Instant Download Link & Lifetime Access',
+            'HD Quality — 100% Non-Copyrighted',
+            'Ready to Post on Instagram & Reels',
+            'Creatures, Fantasy, Sci-Fi & More Categories',
+            'New Reels Added Every Month — Free'
         ),
-        (
-            'Creature Pack Vol.2',
-            '150+ AI Creature Reels — Exclusive Pack',
-            'Exclusive collection of AI creature reels — dragons, monsters, and mythical beings.',
-            'Dive deep into the world of AI creatures with 150+ exclusive reels. Perfect for creators who want to stand out with unique, eye-catching content. All reels are HD, watermark-free, and ready to post.',
-            'https://images.pexels.com/photos/1714208/pexels-photo-1714208.jpeg?auto=compress&cs=tinysrgb&w=800',
-            'https://img.rocket.new/generatedImages/rocket_gen_img_1857071c7-1766557986386.png',
-            799.00, 49.00, 150, 'AI Creatures',
-            '["150+ AI Creature Reel Videos","Dragons, Monsters & Mythical Beings","No Watermark — Post-Ready","HD Quality — Non-Copyrighted","Instant Download & Lifetime Access"]',
-            'active', false
+        'active'::public.bundle_status,
+        true
+    ),
+    (
+        'Creature Pack Vol.2',
+        '150+ AI Creature Reels — Exclusive Pack',
+        'Exclusive collection of AI creature reels — dragons, monsters, and mythical beings.',
+        'Dive deep into the world of AI creatures with 150+ exclusive reels. Perfect for creators who want to stand out with unique, eye-catching content. All reels are HD, watermark-free, and ready to post.',
+        'https://images.pexels.com/photos/1714208/pexels-photo-1714208.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://img.rocket.new/generatedImages/rocket_gen_img_1857071c7-1766557986386.png',
+        799.00, 49.00, 150, 'AI Creatures',
+        jsonb_build_array(
+            '150+ AI Creature Reel Videos',
+            'Dragons, Monsters & Mythical Beings',
+            'No Watermark — Post-Ready',
+            'HD Quality — Non-Copyrighted',
+            'Instant Download & Lifetime Access'
         ),
-        (
-            'Sci-Fi Mega Pack',
-            '200+ Sci-Fi & Robot Reels — Mega Pack',
-            'Futuristic robots, spaceships, and sci-fi landscapes for tech-savvy creators.',
-            'The ultimate sci-fi content pack with 200+ reels featuring robots, spaceships, futuristic cities, and more. Perfect for tech, gaming, and innovation-focused Instagram accounts.',
-            'https://images.pexels.com/photos/3621344/pexels-photo-3621344.jpeg?auto=compress&cs=tinysrgb&w=800',
-            'https://img.rocket.new/generatedImages/rocket_gen_img_1d2a5df5e-1772104062718.png',
-            999.00, 59.00, 200, 'Sci-Fi & Robots',
-            '["200+ Sci-Fi & Robot Reel Videos","Spaceships, Robots & Futuristic Cities","No Watermark — Post-Ready","HD Quality — Non-Copyrighted","Instant Download & Lifetime Access"]',
-            'draft', false
-        )
-    ) AS v(name, title, short_description, full_description, thumbnail_url, mockup_image_url, original_price, offer_price, reels_count, category, features, bundle_status, is_featured)
-    WHERE NOT EXISTS (
-        SELECT 1 FROM public.bundles b WHERE b.name = v.name
+        'active'::public.bundle_status,
+        false
+    ),
+    (
+        'Sci-Fi Mega Pack',
+        '200+ Sci-Fi & Robot Reels — Mega Pack',
+        'Futuristic robots, spaceships, and sci-fi landscapes for tech-savvy creators.',
+        'The ultimate sci-fi content pack with 200+ reels featuring robots, spaceships, futuristic cities, and more. Perfect for tech, gaming, and innovation-focused Instagram accounts.',
+        'https://images.pexels.com/photos/3621344/pexels-photo-3621344.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://img.rocket.new/generatedImages/rocket_gen_img_1d2a5df5e-1772104062718.png',
+        999.00, 59.00, 200, 'Sci-Fi & Robots',
+        jsonb_build_array(
+            '200+ Sci-Fi & Robot Reel Videos',
+            'Spaceships, Robots & Futuristic Cities',
+            'No Watermark — Post-Ready',
+            'HD Quality — Non-Copyrighted',
+            'Instant Download & Lifetime Access'
+        ),
+        'draft'::public.bundle_status,
+        false
     );
 
 EXCEPTION
