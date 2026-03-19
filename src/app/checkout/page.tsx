@@ -4,6 +4,7 @@ import Link from 'next/link';
 import AppLogo from '@/components/ui/AppLogo';
 import Icon from '@/components/ui/AppIcon';
 import AppImage from '@/components/ui/AppImage';
+import { trackBeginCheckout, trackFormSubmit, trackPurchase } from '@/lib/analytics';
 
 interface FormData {
   name: string;
@@ -36,6 +37,7 @@ export default function Checkout() {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
+    trackFormSubmit('checkout-form');
     // Mock: proceed to payment step
     setTimeout(() => {
       setLoading(false);
@@ -45,9 +47,15 @@ export default function Checkout() {
 
   const handlePayment = () => {
     setLoading(true);
+    trackBeginCheckout({ value: 79, currency: 'INR' });
     // Mock payment — redirect to download on success
     setTimeout(() => {
       setLoading(false);
+      trackPurchase({
+        transactionId: `RS-${Date.now()}`,
+        value: 79,
+        currency: 'INR',
+      });
       window.location.href = '/download';
     }, 1500);
   };
