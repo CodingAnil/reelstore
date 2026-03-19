@@ -189,13 +189,13 @@ export const bundleService = {
         download_url: bundle.downloadUrl,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error creating bundle:', error.message);
       return null;
     }
-    return mapBundle(data as Record<string, unknown>);
+    return data ? mapBundle(data as Record<string, unknown>) : null;
   },
 
   async updateBundle(id: string, bundle: Partial<Omit<Bundle, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Bundle | null> {
@@ -221,13 +221,13 @@ export const bundleService = {
       .update(updateData)
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error updating bundle:', error.message);
       return null;
     }
-    return mapBundle(data as Record<string, unknown>);
+    return data ? mapBundle(data as Record<string, unknown>) : null;
   },
 
   async deleteBundle(id: string): Promise<boolean> {
@@ -285,13 +285,13 @@ export const categoryService = {
         status: category.status,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error creating category:', error.message);
       return null;
     }
-    return mapCategory(data as Record<string, unknown>);
+    return data ? mapCategory(data as Record<string, unknown>) : null;
   },
 
   async updateCategory(id: string, category: Partial<Omit<Category, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Category | null> {
@@ -308,13 +308,13 @@ export const categoryService = {
       .update(updateData)
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error updating category:', error.message);
       return null;
     }
-    return mapCategory(data as Record<string, unknown>);
+    return data ? mapCategory(data as Record<string, unknown>) : null;
   },
 
   async deleteCategory(id: string): Promise<boolean> {
