@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import AppImage from '@/components/ui/AppImage';
 import Icon from '@/components/ui/AppIcon';
+import { trackViewItem, trackCTAClick } from '@/lib/analytics';
 
 interface TimeLeft {
   hours: number;
@@ -33,6 +34,10 @@ const HeroSection: React.FC = () => {
       setBuyers((prev) => prev + Math.floor(Math.random() * 3));
     }, 8000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    trackViewItem({ itemId: 'reelstore-bundle-500', itemName: 'ReelStore 500+ AI Reels Bundle', price: 79, currency: 'INR' });
   }, []);
 
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -241,7 +246,9 @@ const HeroSection: React.FC = () => {
 
               <Link
                 href="/checkout"
-                className="btn-cta animate-pulse-cta w-full flex items-center justify-between px-6 py-4 rounded-2xl text-white font-display font-800 text-lg shadow-cta">
+                className="btn-cta animate-pulse-cta w-full flex items-center justify-between px-6 py-4 rounded-2xl text-white font-display font-800 text-lg shadow-cta"
+                onClick={() => trackCTAClick({ itemId: 'reelstore-bundle-500', itemName: 'ReelStore 500+ AI Reels Bundle', price: 79, currency: 'INR' })}
+              >
                 
                 <span>Get it now — ₹79 only</span>
                 <Icon name="ArrowRightIcon" size={22} className="text-white" />

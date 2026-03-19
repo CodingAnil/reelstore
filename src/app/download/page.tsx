@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import AppLogo from '@/components/ui/AppLogo';
 import Icon from '@/components/ui/AppIcon';
+import { trackDownload } from '@/lib/analytics';
 
 const steps = [
   { icon: '📥', title: 'Click Download', desc: 'Tap the button below to open your Google Drive folder' },
@@ -87,6 +88,7 @@ export default function Download() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-gold w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl text-bg font-display font-900 text-xl mb-4"
+                onClick={() => trackDownload('download_bundle')}
               >
                 <Icon name="ArrowDownTrayIcon" size={24} className="text-bg" />
                 <span>Download from Google Drive</span>
