@@ -35,20 +35,18 @@ const Footer: React.FC = () => {
         </div>
 
         {/* Copyright & Legal */}
-        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-4 gap-y-2 text-fg-dim text-sm">
+        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-3 gap-y-2 text-fg-dim text-[11px] sm:text-xs">
           <span>© 2026 ReelStore</span>
           <span className="hidden sm:inline text-accent/30">·</span>
-          <Link href="/contact" className="hover:text-fg transition-colors">
-            Contact
-          </Link>
+          <Link href="/contact" className="hover:text-fg transition-colors">Contact</Link>
           <span className="text-accent/30">·</span>
-          <Link href="/privacy" className="hover:text-fg transition-colors">
-            Privacy
-          </Link>
+          <Link href="/privacy" className="hover:text-fg transition-colors">Privacy</Link>
           <span className="text-accent/30">·</span>
-          <Link href="/terms" className="hover:text-fg transition-colors">
-            Terms
-          </Link>
+          <Link href="/terms" className="hover:text-fg transition-colors">Terms</Link>
+          <span className="text-accent/30">·</span>
+          <Link href="/refund" className="hover:text-fg transition-colors">Refund</Link>
+          <span className="text-accent/30">·</span>
+          <Link href="/delivery" className="hover:text-fg transition-colors">Delivery</Link>
         </div>
       </div>
     </footer>

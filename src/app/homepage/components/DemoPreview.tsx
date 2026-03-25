@@ -86,7 +86,7 @@ const DemoPreview: React.FC = () => {
             Watch Before You Buy
           </h2>
           <p className="text-fg-dim text-base max-w-lg mx-auto">
-            These are actual reels from the bundle. What you see is what you get.
+            These are actual assets from our collection. What you see is what you get.
           </p>
         </div>
 
@@ -151,13 +151,13 @@ const DemoPreview: React.FC = () => {
         {/* CTA below */}
         <div className="text-center mt-10 reveal">
           <p className="text-fg-muted text-sm mb-4">
-            These are just 6 out of <span className="text-accent font-700">500+ reels</span> in the bundle
+            These are just 6 out of <span className="text-accent font-700">30,000+ assets</span> in the pack
           </p>
           <a
             href="/checkout"
             className="btn-cta inline-flex items-center gap-3 px-8 py-4 rounded-2xl text-white font-display font-800 text-lg shadow-cta">
             
-            <span>Get All 500+ Reels for ₹79</span>
+            <span>Get Full Assets Pack for ₹79</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
             </svg>

@@ -235,7 +235,7 @@ function CheckoutContent() {
       <header className="py-5 px-4 sm:px-6 border-b border-accent/10 flex items-center justify-between max-w-5xl mx-auto">
         <Link href="/homepage" className="flex items-center gap-2">
           <AppLogo size={32} />
-          <span className="font-display font-800 text-lg text-accent hidden sm:block">ReelStore</span>
+          <span className="font-display font-800 text-lg text-accent hidden sm:block">ReelStore Technologies</span>
         </Link>
         <div className="flex items-center gap-2 text-fg-dim text-sm">
           <Icon name="LockClosedIcon" size={14} className="text-green-400" />
@@ -366,8 +366,8 @@ function CheckoutContent() {
               {(paymentState === 'failed' || paymentState === 'cancelled') && !loading && (
                 <p className="text-center text-fg-dim text-xs mt-2">
                   Having trouble? Contact us at{' '}
-                  <a href="mailto:support@reelstore.co" className="text-accent hover:underline">
-                    support@reelstore.co
+                  <a href="mailto:startputt2533@gmail.com" className="text-accent hover:underline">
+                    startputt2533@gmail.com
                   </a>
                 </p>
               )}
@@ -406,8 +406,8 @@ function CheckoutContent() {
                     </div>
                   )}
 
-                  <h2 className="font-display font-900 text-xl text-fg mb-1">{bundle.name}</h2>
-                  <p className="text-fg-dim text-sm mb-6">{bundle.shortDescription || bundle.category}</p>
+                  <h2 className="font-display font-900 text-xl text-fg mb-1">{bundle.name || 'Creative Assets Pack'}</h2>
+                  <p className="text-fg-dim text-sm mb-6">{bundle.shortDescription || 'Professional Digital Marketing Content Kit'}</p>
 
                   {/* Price breakdown */}
                   <div className="space-y-3 mb-6 pb-6 border-b border-accent/10">

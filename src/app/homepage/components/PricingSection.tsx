@@ -98,8 +98,8 @@ const PricingSection: React.FC = () => {
                       </div>
                     )}
                     <div className="mb-6">
-                      <h3 className="font-display font-900 text-2xl text-fg mb-1">{bundle.name}</h3>
-                      <p className="text-fg-dim text-sm">{bundle.shortDescription || bundle.category}</p>
+                      <h3 className="font-display font-900 text-2xl text-fg mb-1">{bundle.name || 'Creative Assets Pack'}</h3>
+                      <p className="text-fg-dim text-sm">{bundle.shortDescription || 'Professional Digital Marketing Content Kit'}</p>
                     </div>
                     {/* Price display */}
                     <div className="flex items-baseline gap-3 mb-6">
@@ -206,8 +206,8 @@ const PricingSection: React.FC = () => {
             <div className="reveal-left glass rounded-3xl p-8 relative overflow-hidden" style={{ border: '2px solid rgba(201,168,76,0.4)', boxShadow: '0 0 60px rgba(201,168,76,0.15), 0 0 120px rgba(139,26,26,0.2)' }}>
               <div className="absolute top-4 right-4"><span className="badge-fire text-white">BEST VALUE</span></div>
               <div className="mb-6">
-                <h3 className="font-display font-900 text-2xl text-fg mb-1">Hybrid Reels Bundle</h3>
-                <p className="text-fg-dim text-sm">Complete collection — everything you need</p>
+                <h3 className="font-display font-900 text-2xl text-fg mb-1">Creative Assets Pack</h3>
+                <p className="text-fg-dim text-sm">Professional Digital Marketing Content Kit</p>
               </div>
               <div className="flex items-baseline gap-3 mb-6">
                 <span className="font-display font-900 text-6xl text-fg">₹79</span>

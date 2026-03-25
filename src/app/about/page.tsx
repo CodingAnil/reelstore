@@ -7,72 +7,55 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-bg text-fg overflow-x-hidden">
       <Header />
-      <main className="pt-32 pb-20 px-4 sm:px-6 max-w-4xl mx-auto">
-        <h1 className="font-display font-900 text-4xl sm:text-6xl text-gold mb-8 text-center sm:text-left">
-          About ReelStore
+      <main className="pt-32 pb-20 px-4 sm:px-6 max-w-4xl mx-auto text-center sm:text-left">
+        <h1 className="font-display font-900 text-4xl sm:text-6xl text-gold mb-8">
+          About ReelStore Technologies
         </h1>
-        <p className="text-fg-muted mb-12 text-center sm:text-left">
-          Fueling the next generation of social media creators with premium AI-powered video content.
+        <p className="text-fg-muted mb-12 text-lg max-w-2xl">
+          Empowering digital creators with premium, licensed creative assets for social media marketing.
         </p>
 
         <section className="space-y-16">
           <div className="p-8 rounded-3xl bg-secondary/10 border border-accent/20">
-            <h2 className="text-accent text-3xl font-900 mb-6">Our Mission</h2>
+            <h2 className="text-accent text-3xl font-900 mb-6">Who We Are</h2>
             <p className="text-fg-dim text-lg leading-relaxed mb-6">
-              In a world where attention is the new currency, ReelStore aims to simplify content creation by providing high-quality, viral-ready AI hybrid reels. Our content is curated specifically for creator economy growth.
+              ReelStore Technologies is a premier provider of high-quality digital assets designed for modern marketers and social media enthusiasts. Founded in 2026, we specialize in creating and licensing unique, AI-enhanced visual content that helps brands grow their digital footprint.
             </p>
-            <p className="text-fg-dim text-lg leading-relaxed">
-              We empower influencers, marketers, and businesses to build massive audiences without spending hours on video production.
+            <p className="text-fg-dim text-lg leading-relaxed italic">
+              "Our goal is to bridge the gap between complex AI generation and ready-to-use marketing assets."
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center sm:text-left">
-            <div className="space-y-4">
-              <div className="text-gold text-4xl font-900">5,000+</div>
-              <p className="text-fg-muted font-800 uppercase tracking-widest text-sm">Customers Served</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="p-8 rounded-3xl bg-secondary/10 border border-accent/20">
+              <h3 className="text-gold text-2xl font-900 mb-4 tracking-tight">Our Standards</h3>
+              <ul className="space-y-3 text-fg-dim">
+                <li className="flex gap-2"><span>✅</span> 100% Original AI-Generated Content</li>
+                <li className="flex gap-2"><span>✅</span> Full Commercial Redistribution License</li>
+                <li className="flex gap-2"><span>✅</span> Rigorous Copyright-Check Filtering</li>
+                <li className="flex gap-2"><span>✅</span> Professional HD Quality Standards</li>
+              </ul>
             </div>
-            <div className="space-y-4">
-              <div className="text-gold text-4xl font-900">100+</div>
-              <p className="text-fg-muted font-800 uppercase tracking-widest text-sm">Categories Added</p>
-            </div>
-            <div className="space-y-4">
-              <div className="text-gold text-4xl font-900">₹79</div>
-              <p className="text-fg-muted font-800 uppercase tracking-widest text-sm">Most Affordable Bundle</p>
+            
+            <div className="p-8 rounded-3xl bg-secondary/10 border border-accent/20">
+              <h3 className="text-gold text-2xl font-900 mb-4 tracking-tight">Support Entity</h3>
+              <p className="text-fg-dim text-sm mb-4">
+                We operate as a digital content distribution platform, ensuring every asset sold our platform is verified for safe commercial usage by individual creators and agencies.
+              </p>
+              <div className="flex flex-col text-xs text-fg-muted uppercase tracking-widest gap-1">
+                <span>Registration: Registered Digital Business</span>
+                <span>Support Level: 24/7 Priority Email</span>
+              </div>
             </div>
           </div>
 
           <div className="p-8 rounded-3xl bg-maroon-gradient border border-accent/20 relative overflow-hidden">
-            <h2 className="text-white text-3xl font-900 mb-6 font-display">Why Choose Us?</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-8">
-              <div className="flex gap-4">
-                <div className="text-accent text-2xl font-900">01</div>
-                <div className="space-y-1">
-                  <h4 className="text-gold font-800 text-lg uppercase tracking-tight">No Watermarks</h4>
-                  <p className="text-fg-dim text-sm">All our reels are high-definition and completely watermark-free for professional look.</p>
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <div className="text-accent text-2xl font-900">02</div>
-                <div className="space-y-1">
-                  <h4 className="text-gold font-800 text-lg uppercase tracking-tight">Instant Download</h4>
-                  <p className="text-fg-dim text-sm">No waiting. Get access to your downloads immediately after payment.</p>
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <div className="text-accent text-2xl font-900">03</div>
-                <div className="space-y-1">
-                  <h4 className="text-gold font-800 text-lg uppercase tracking-tight">AI Curated</h4>
-                  <p className="text-fg-dim text-sm">Each reel is generated using state-of-the-art AI tools for maximum engagement.</p>
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <div className="text-accent text-2xl font-900">04</div>
-                <div className="space-y-1">
-                  <h4 className="text-gold font-800 text-lg uppercase tracking-tight">Secure Payments</h4>
-                  <p className="text-fg-dim text-sm">We partner with leading payment gateways like Razorpay for secure transactions.</p>
-                </div>
-              </div>
-            </div>
+             <div className="relative z-10">
+              <h2 className="text-white text-3xl font-900 mb-6 font-display">Transparency & Ethics</h2>
+              <p className="text-fg-dim text-lg leading-relaxed">
+                At ReelStore, transparency is our core value. We ensure that all our "Creative Assets Packs" are clearly labeled regarding their AI-origin and licensing terms. We work closely with payment partners like Razorpay to maintain the highest standards of financial integrity and customer satisfaction.
+              </p>
+             </div>
           </div>
         </section>
       </main>

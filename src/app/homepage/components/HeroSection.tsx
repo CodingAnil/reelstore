@@ -52,22 +52,22 @@ const HeroSection: React.FC = () => {
   const pad = (n: number) => String(n).padStart(2, '0');
 
   const bundle = featuredBundle;
-  const displayName = bundle?.name || 'Hybrid Reels Bundle';
-  const displayTitle = bundle?.title || '30,000+ Reels Bundle Deal';
-  const displayShortDesc = bundle?.shortDescription || 'AI-generated Hybrid Reels — ready to post on Instagram. No watermark, HD quality, instant download.';
+  const displayName = bundle?.name || 'Licensed Creative Assets Pack';
+  const displayTitle = bundle?.title || '30,000+ Creative Assets Bundle Deal';
+  const displayShortDesc = bundle?.shortDescription || 'Professional Digital Marketing Content Kit. All assets are either AI-generated or licensed for redistribution. No copyrighted material included.';
   const displayOfferPrice = bundle?.offerPrice ?? 79;
   const displayOriginalPrice = bundle?.originalPrice ?? 1499;
   const displayReelsCount = bundle?.reelsCount ?? 500;
   const displayFeatures = bundle?.features?.length
     ? bundle.features
     : [
-        '500+ AI Hybrid Readymade Reel Videos',
-        'No Logo & No Watermark — Post-Ready',
+        '30,000+ Professional Creative Assets',
+        'Licensed for Personal & Social Media Use',
         'Instant Download Link & Lifetime Access',
-        'HD Quality — 100% Non-Copyrighted',
-        'Ready to Post on Instagram & Reels',
-        'Creatures, Fantasy, Sci-Fi & More Categories',
-        'New Reels Added Every Month — Free',
+        'HD Quality — 100% AI-Generated & Licensed',
+        'All Content is Licensed for Redistribution',
+        'Multi-Category Content Marketing Kit',
+        'New Assets Added Every Month — Free',
       ];
   const discountPct = displayOriginalPrice > 0
     ? Math.round(((displayOriginalPrice - displayOfferPrice) / displayOriginalPrice) * 100)
@@ -103,9 +103,9 @@ const HeroSection: React.FC = () => {
         {/* Main headline */}
         <div className="text-center mb-6 animate-fade-up delay-100">
           <h1 className="font-display font-900 text-4xl sm:text-6xl md:text-7xl leading-[0.9] tracking-tight mb-4">
-            <span className="text-fg">{displayReelsCount}+ Reels</span>
+            <span className="text-fg">Licensed Creative</span>
             <br />
-            <span className="shimmer-text">Bundle Deal</span>
+            <span className="shimmer-text">Assets Pack</span>
           </h1>
           <p className="text-fg-muted text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed mt-4">
             {displayShortDesc}
@@ -143,7 +143,7 @@ const HeroSection: React.FC = () => {
                 className="relative w-[280px] sm:w-[340px] rounded-2xl overflow-hidden"
                 style={{ background: 'linear-gradient(135deg, #2D0A0A 0%, #5C1A1A 30%, #8B1A1A 60%, #5C1A1A 80%, #2D0A0A 100%)', border: '2px solid rgba(201,168,76,0.5)', boxShadow: '0 0 60px rgba(139,26,26,0.6), 0 0 120px rgba(201,168,76,0.15), inset 0 1px 0 rgba(201,168,76,0.3)' }}>
                 <div className="px-6 pt-5 pb-3 text-center">
-                  <div className="font-display font-900 text-2xl text-accent tracking-widest uppercase">BUNDLE</div>
+                  <div className="font-display font-900 text-2xl text-accent tracking-widest uppercase">ASSETS PACK</div>
                 </div>
                 {/* Product mockup or phone mockups */}
                 {bundle?.mockupImageUrl ? (
@@ -168,7 +168,7 @@ const HeroSection: React.FC = () => {
                   <div className="font-display font-700 text-lg" style={{ color: '#E8C96A', fontStyle: 'italic', textShadow: '0 0 20px rgba(201,168,76,0.5)' }}>Digital Aura</div>
                 </div>
                 <div className="absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.3)', borderRight: '1px solid rgba(201,168,76,0.2)' }}>
-                  <span className="font-display font-900 text-accent text-xs tracking-widest" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)' }}>{displayReelsCount}+ REELS</span>
+                  <span className="font-display font-900 text-accent text-xs tracking-widest" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)' }}>LICENSED ASSETS</span>
                 </div>
               </div>
             </div>
@@ -208,7 +208,7 @@ const HeroSection: React.FC = () => {
               <Link
                 href="/checkout"
                 className="btn-cta animate-pulse-cta w-full flex items-center justify-between px-6 py-4 rounded-2xl text-white font-display font-800 text-lg shadow-cta"
-                onClick={() => bundle && trackCTAClick({ itemId: bundle.id, itemName: bundle.name, price: bundle.offerPrice, currency: 'INR' })}
+                onClick={() => bundle && trackCTAClick(`Get it now — ₹${displayOfferPrice}`, 'Hero Section')}
               >
                 <span>Get it now — ₹{displayOfferPrice} only</span>
                 <Icon name="ArrowRightIcon" size={22} className="text-white" />

@@ -34,7 +34,7 @@ const Header: React.FC = () => {
           href="/checkout"
           className="btn-cta animate-pulse-cta px-5 py-2.5 rounded-full text-white font-display font-700 text-sm tracking-wide"
         >
-          Get Bundle ₹79
+          Get Assets Pack ₹79
         </Link>
       </div>
     </header>
