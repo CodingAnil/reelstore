@@ -43,9 +43,19 @@ export interface Order {
   currency: string;
   status: 'pending' | 'paid' | 'failed' | 'refunded';
   paymentId: string | null;
+  razorpayOrderId: string | null;
+  razorpayPaymentId: string | null;
+  razorpaySignature: string | null;
   downloadUrl: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface BundleSalesStats {
+  bundleId: string | null;
+  bundleName: string;
+  totalSales: number;
+  totalRevenue: number;
 }
 
 function mapBundle(row: Record<string, unknown>): Bundle {
@@ -96,6 +106,9 @@ function mapOrder(row: Record<string, unknown>): Order {
     currency: (row.currency as string) || 'INR',
     status: (row.status as 'pending' | 'paid' | 'failed' | 'refunded') || 'pending',
     paymentId: (row.payment_id as string) || null,
+    razorpayOrderId: (row.razorpay_order_id as string) || null,
+    razorpayPaymentId: (row.razorpay_payment_id as string) || null,
+    razorpaySignature: (row.razorpay_signature as string) || null,
     downloadUrl: (row.download_url as string) || null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
@@ -432,29 +445,68 @@ export const orderService = {
     return (data || []).map((row) => mapOrder(row as Record<string, unknown>));
   },
 
+  async markOrderFailed(orderId: string): Promise<Order | null> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('orders')
+      .update({ status: 'failed' })
+      .eq('id', orderId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error marking order failed:', error.message);
+      return null;
+    }
+    return mapOrder(data as Record<string, unknown>);
+  },
+
   async getOrderStats(): Promise<{
     totalRevenue: number;
     totalOrders: number;
     paidOrders: number;
+    failedOrders: number;
     pendingOrders: number;
+    bundleSales: BundleSalesStats[];
   }> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('orders')
-      .select('amount, status');
+      .select('amount, status, bundle_id, bundle_name');
 
     if (error) {
       console.error('Error fetching order stats:', error.message);
-      return { totalRevenue: 0, totalOrders: 0, paidOrders: 0, pendingOrders: 0 };
+      return { totalRevenue: 0, totalOrders: 0, paidOrders: 0, failedOrders: 0, pendingOrders: 0, bundleSales: [] };
     }
 
     const orders = data || [];
-    const paidOrders = orders.filter((o) => o.status === 'paid');
+    const paid = orders.filter((o) => o.status === 'paid');
+
+    // ── Bundle-wise sales (verified payments only) ──────────────────────────
+    const bundleMap = new Map<string, BundleSalesStats>();
+    paid.forEach((o) => {
+      const key = (o.bundle_id as string) || 'unknown';
+      const existing = bundleMap.get(key);
+      if (existing) {
+        existing.totalSales += 1;
+        existing.totalRevenue += Number(o.amount);
+      } else {
+        bundleMap.set(key, {
+          bundleId: (o.bundle_id as string) || null,
+          bundleName: (o.bundle_name as string) || 'Unknown Bundle',
+          totalSales: 1,
+          totalRevenue: Number(o.amount),
+        });
+      }
+    });
+
     return {
-      totalRevenue: paidOrders.reduce((sum, o) => sum + Number(o.amount), 0),
+      totalRevenue: paid.reduce((sum, o) => sum + Number(o.amount), 0),
       totalOrders: orders.length,
-      paidOrders: paidOrders.length,
+      paidOrders: paid.length,
+      failedOrders: orders.filter((o) => o.status === 'failed').length,
       pendingOrders: orders.filter((o) => o.status === 'pending').length,
+      bundleSales: Array.from(bundleMap.values()).sort((a, b) => b.totalRevenue - a.totalRevenue),
     };
   },
 };
