@@ -13,25 +13,42 @@ const Footer: React.FC = () => {
             <span className="font-display font-700 text-sm text-accent">ReelStore</span>
           </div>
           <nav className="flex items-center gap-5">
-            <Link href="/homepage" className="text-fg-dim text-sm font-medium hover:text-fg transition-colors">
+            <Link
+              href="/homepage"
+              className="text-fg-dim text-sm font-medium hover:text-fg transition-colors"
+            >
               Home
             </Link>
-            <Link href="/checkout" className="text-fg-dim text-sm font-medium hover:text-fg transition-colors">
-              Buy Now
+            <Link
+              href="/about"
+              className="text-fg-dim text-sm font-medium hover:text-fg transition-colors"
+            >
+              About
             </Link>
-            <Link href="/admin-dashboard" className="text-fg-dim text-sm font-medium hover:text-fg transition-colors">
+            <Link
+              href="/admin-dashboard"
+              className="text-fg-dim text-sm font-medium hover:text-fg transition-colors"
+            >
               Admin
             </Link>
           </nav>
         </div>
 
-        {/* Copyright */}
-        <div className="flex items-center gap-4 text-fg-dim text-sm">
+        {/* Copyright & Legal */}
+        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-4 gap-y-2 text-fg-dim text-sm">
           <span>© 2026 ReelStore</span>
+          <span className="hidden sm:inline text-accent/30">·</span>
+          <Link href="/contact" className="hover:text-fg transition-colors">
+            Contact
+          </Link>
           <span className="text-accent/30">·</span>
-          <Link href="#" className="hover:text-fg transition-colors">Privacy</Link>
+          <Link href="/privacy" className="hover:text-fg transition-colors">
+            Privacy
+          </Link>
           <span className="text-accent/30">·</span>
-          <Link href="#" className="hover:text-fg transition-colors">Terms</Link>
+          <Link href="/terms" className="hover:text-fg transition-colors">
+            Terms
+          </Link>
         </div>
       </div>
     </footer>
