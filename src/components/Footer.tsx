@@ -35,18 +35,35 @@ const Footer: React.FC = () => {
         </div>
 
         {/* Copyright & Legal */}
-        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-3 gap-y-2 text-fg-dim text-[11px] sm:text-xs">
-          <span>© 2026 ReelStore</span>
-          <span className="hidden sm:inline text-accent/30">·</span>
-          <Link href="/contact" className="hover:text-fg transition-colors">Contact</Link>
-          <span className="text-accent/30">·</span>
-          <Link href="/privacy" className="hover:text-fg transition-colors">Privacy</Link>
-          <span className="text-accent/30">·</span>
-          <Link href="/terms" className="hover:text-fg transition-colors">Terms</Link>
-          <span className="text-accent/30">·</span>
-          <Link href="/refund" className="hover:text-fg transition-colors">Refund</Link>
-          <span className="text-accent/30">·</span>
-          <Link href="/delivery" className="hover:text-fg transition-colors">Delivery</Link>
+        <div className="flex flex-col items-center sm:items-end gap-3 text-fg-dim text-[11px] sm:text-xs">
+          <div className="text-center sm:text-right">
+            <div className="font-700 text-fg">© 2026 ReelStore. All rights reserved.</div>
+            <div className="text-accent/80 font-800 tracking-wider text-[10px] uppercase mt-1">
+              Owned & operated by ANIL
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-3 gap-y-2">
+            <Link href="/contact" className="hover:text-fg transition-colors">
+              Contact
+            </Link>
+            <span className="text-accent/30">·</span>
+            <Link href="/privacy" className="hover:text-fg transition-colors">
+              Privacy
+            </Link>
+            <span className="text-accent/30">·</span>
+            <Link href="/terms" className="hover:text-fg transition-colors">
+              Terms
+            </Link>
+            <span className="text-accent/30">·</span>
+            <Link href="/refund" className="hover:text-fg transition-colors">
+              Refund
+            </Link>
+            <span className="text-accent/30">·</span>
+            <Link href="/delivery" className="hover:text-fg transition-colors">
+              Delivery
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
