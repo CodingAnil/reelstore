@@ -54,7 +54,7 @@ export default function TermsPage() {
           <div>
             <h2 className="text-accent text-2xl font-800 mb-4">5. Governing Law</h2>
             <p className="text-fg-dim leading-relaxed">
-              These terms are governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in <span className="text-white">Gurugram, Haryana</span>.
+              These terms are governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in <span className="text-white">Mohali, Punjab</span>.
             </p>
           </div>
 
