@@ -19,7 +19,10 @@ export default function AboutPage() {
           <div className="p-8 rounded-3xl bg-secondary/10 border border-accent/20">
             <h2 className="text-accent text-3xl font-900 mb-6">Who We Are</h2>
             <p className="text-fg-dim text-lg leading-relaxed mb-6">
-              ReelStore Technologies is a premier provider of high-quality digital assets designed for modern marketers and social media enthusiasts. Founded in 2026, we specialize in creating and licensing unique, AI-enhanced visual content that helps brands grow their digital footprint.
+              <span className="text-gold font-700">ReelStore is owned and operated by ANIL.</span> We provide digital content bundles and licensed asset packs for creators and modern marketers.
+            </p>
+            <p className="text-fg-dim text-lg leading-relaxed mb-6">
+              ReelStore Technologies is a premier provider of high-quality digital assets designed for social media enthusiasts. Founded in 2026, we specialize in creating and licensing unique, AI-enhanced visual content that helps brands grow their digital footprint.
             </p>
             <p className="text-fg-dim text-lg leading-relaxed italic">
               "Our goal is to bridge the gap between complex AI generation and ready-to-use marketing assets."
