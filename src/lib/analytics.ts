@@ -64,11 +64,13 @@ export function trackBeginCheckout(params: {
   });
 }
 
-/** Track successful purchase / conversion */
+/** Track successful purchase / conversion (verified payment only) */
 export function trackPurchase(params: {
   transactionId: string;
   value?: number;
   currency?: string;
+  itemId?: string;
+  itemName?: string;
 }): void {
   trackEvent('purchase', {
     transaction_id: params.transactionId,
@@ -76,12 +78,32 @@ export function trackPurchase(params: {
     value: params.value ?? 79,
     items: [
       {
-        item_id: 'reelstore-bundle-500',
-        item_name: 'ReelStore 500+ AI Reels Bundle',
+        item_id: params.itemId ?? 'reelstore-bundle',
+        item_name: params.itemName ?? 'ReelStore Bundle',
         price: params.value ?? 79,
         quantity: 1,
       },
     ],
+  });
+}
+
+/** Track payment failure (Razorpay returned error or verification failed) */
+export function trackPaymentFailed(params: {
+  orderId?: string;
+  reason?: string;
+}): void {
+  trackEvent('payment_failed', {
+    order_id: params.orderId ?? '',
+    failure_reason: params.reason ?? 'unknown',
+  });
+}
+
+/** Track user-cancelled payment (user dismissed Razorpay modal) */
+export function trackPaymentCancelled(params: {
+  orderId?: string;
+}): void {
+  trackEvent('payment_cancelled', {
+    order_id: params.orderId ?? '',
   });
 }
 

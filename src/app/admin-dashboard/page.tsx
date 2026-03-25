@@ -20,7 +20,7 @@ const emptyBundle = {
   reelsCount: 0,
   category: '',
   features: [] as string[],
-  status: 'draft\' as \'draft\' | \'active\' | \'inactive',
+  status: 'draft' as 'draft' | 'active' | 'inactive',
   isFeatured: false,
   downloadUrl: '',
 };
@@ -30,7 +30,7 @@ const emptyCategory = {
   reelsCount: 0,
   demoVideoUrl: '',
   description: '',
-  status: 'active\' as \'active\' | \'inactive',
+  status: 'active' as 'active' | 'inactive',
 };
 
 export default function AdminDashboard() {
@@ -69,7 +69,9 @@ export default function AdminDashboard() {
     totalRevenue: 0,
     totalOrders: 0,
     paidOrders: 0,
+    failedOrders: 0,
     pendingOrders: 0,
+    bundleSales: [] as import('@/lib/services/reelstoreService').BundleSalesStats[],
   });
   const [statsLoading, setStatsLoading] = useState(false);
 
@@ -377,24 +379,28 @@ export default function AdminDashboard() {
                     value: statsLoading ? '...' : `₹${stats.totalRevenue.toLocaleString('en-IN')}`,
                     icon: '💰',
                     color: 'text-green-400',
+                    hint: 'From verified payments',
                   },
                   {
-                    label: 'Total Orders',
-                    value: statsLoading ? '...' : stats.totalOrders.toString(),
-                    icon: '📦',
-                    color: 'text-accent',
-                  },
-                  {
-                    label: 'Paid Orders',
+                    label: 'Successful Orders',
                     value: statsLoading ? '...' : stats.paidOrders.toString(),
                     icon: '✅',
-                    color: 'text-purple-400',
+                    color: 'text-accent',
+                    hint: 'Razorpay verified',
+                  },
+                  {
+                    label: 'Failed / Cancelled',
+                    value: statsLoading ? '...' : stats.failedOrders.toString(),
+                    icon: '❌',
+                    color: 'text-red-400',
+                    hint: 'No payment collected',
                   },
                   {
                     label: 'Pending Orders',
                     value: statsLoading ? '...' : stats.pendingOrders.toString(),
                     icon: '⏳',
                     color: 'text-yellow-400',
+                    hint: 'Awaiting payment',
                   },
                 ].map((stat, i) => (
                   <div key={i} className="glass rounded-2xl p-5 border-gold card-hover">
@@ -403,9 +409,31 @@ export default function AdminDashboard() {
                     </div>
                     <div className={`font-display font-900 text-2xl sm:text-3xl ${stat.color} mb-1`}>{stat.value}</div>
                     <div className="text-fg-dim text-xs font-600">{stat.label}</div>
+                    <div className="text-fg-dim text-[10px] mt-0.5 opacity-70">{stat.hint}</div>
                   </div>
                 ))}
               </div>
+
+              {/* Bundle-wise Sales */}
+              {!statsLoading && stats.bundleSales.length > 0 && (
+                <div className="glass rounded-2xl p-6 border-gold">
+                  <h3 className="font-display font-800 text-fg text-lg mb-4">📦 Bundle-wise Sales</h3>
+                  <div className="space-y-3">
+                    {stats.bundleSales.map((bs, i) => (
+                      <div key={i} className="flex items-center justify-between py-2 border-b border-accent/5 last:border-0">
+                        <div>
+                          <div className="font-display font-600 text-fg text-sm">{bs.bundleName}</div>
+                          <div className="text-fg-dim text-xs">{bs.totalSales} sale{bs.totalSales !== 1 ? 's' : ''}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-display font-700 text-green-400 text-sm">₹{bs.totalRevenue.toLocaleString('en-IN')}</div>
+                          <div className="text-fg-dim text-xs">verified revenue</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Recent Orders */}
               <div className="glass rounded-2xl p-6 border-gold">

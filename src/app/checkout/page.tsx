@@ -1,12 +1,26 @@
 'use client';
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import AppLogo from '@/components/ui/AppLogo';
 import Icon from '@/components/ui/AppIcon';
 import AppImage from '@/components/ui/AppImage';
-import { trackBeginCheckout, trackFormSubmit, trackPurchase } from '@/lib/analytics';
-import { bundleService, orderService, Bundle } from '@/lib/services/reelstoreService';
+import {
+  trackBeginCheckout,
+  trackFormSubmit,
+  trackPurchase,
+  trackPaymentFailed,
+  trackPaymentCancelled,
+} from '@/lib/analytics';
+import { bundleService, Bundle } from '@/lib/services/reelstoreService';
+
+// ─── Razorpay global type ─────────────────────────────────────────────────────
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Razorpay: new (options: Record<string, unknown>) => { open(): void };
+  }
+}
 
 interface FormData {
   name: string;
@@ -20,6 +34,22 @@ interface FormErrors {
   phone?: string;
 }
 
+// ─── Load Razorpay SDK lazily ─────────────────────────────────────────────────
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
+// ─── CheckoutContent ──────────────────────────────────────────────────────────
 function CheckoutContent() {
   const searchParams = useSearchParams();
   const bundleId = searchParams.get('bundle');
@@ -27,11 +57,13 @@ function CheckoutContent() {
   const [form, setForm] = useState<FormData>({ name: '', email: '', phone: '' });
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<'form' | 'payment'>('form');
   const [bundle, setBundle] = useState<Bundle | null>(null);
   const [bundleLoading, setBundleLoading] = useState(true);
-  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [orderError, setOrderError] = useState('');
+  const [paymentState, setPaymentState] = useState<'idle' | 'success' | 'failed' | 'cancelled'>('idle');
+
+  // Prevent duplicate submissions
+  const isProcessing = useRef(false);
 
   useEffect(() => {
     const loadBundle = async () => {
@@ -41,7 +73,6 @@ function CheckoutContent() {
         loaded = await bundleService.getBundleById(bundleId);
       }
       if (!loaded) {
-        // Fall back to featured bundle
         loaded = await bundleService.getFeaturedBundle();
       }
       setBundle(loaded);
@@ -62,61 +93,144 @@ function CheckoutContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate() || !bundle) return;
+    if (isProcessing.current) return;
+    isProcessing.current = true;
+
     setLoading(true);
     setOrderError('');
+    setPaymentState('idle');
     trackFormSubmit('checkout-form');
 
-    // Create a pending order in Supabase
-    const order = await orderService.createOrder({
-      customerName: form.name,
-      customerEmail: form.email,
-      customerPhone: form.phone,
-      bundleId: bundle.id,
-      bundleName: bundle.name,
-      amount: bundle.offerPrice,
-      downloadUrl: bundle.downloadUrl || '',
-    });
+    try {
+      // ── Load Razorpay SDK ───────────────────────────────────────────────────
+      const sdkLoaded = await loadRazorpayScript();
+      if (!sdkLoaded) {
+        setOrderError('Payment service could not be loaded. Please check your internet connection and try again.');
+        setLoading(false);
+        isProcessing.current = false;
+        return;
+      }
 
-    if (!order) {
-      setOrderError('Failed to create order. Please try again.');
+      // ── Create order on backend ─────────────────────────────────────────────
+      const res = await fetch('/api/payment/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: form.name,
+          customerEmail: form.email,
+          customerPhone: form.phone,
+          bundleId: bundle.id,
+          bundleName: bundle.name,
+          amount: bundle.offerPrice,
+          downloadUrl: bundle.downloadUrl || '',
+        }),
+      });
+
+      const orderData = await res.json();
+
+      if (!res.ok || !orderData.razorpayOrderId) {
+        setOrderError(orderData.error || 'Failed to create order. Please try again.');
+        setLoading(false);
+        isProcessing.current = false;
+        return;
+      }
+
+      trackBeginCheckout({ value: bundle.offerPrice, currency: 'INR' });
+
+      // ── Open Razorpay Checkout ──────────────────────────────────────────────
+      const razorpayOptions = {
+        key: orderData.keyId,
+        amount: orderData.amount,           // In paise
+        currency: orderData.currency,
+        name: 'ReelStore',
+        description: bundle.name,
+        order_id: orderData.razorpayOrderId,
+        prefill: {
+          name: form.name,
+          email: form.email,
+          contact: `+91${form.phone}`,
+        },
+        theme: { color: '#C9A84C' },
+        modal: {
+          ondismiss: async () => {
+            // User closed the Razorpay modal without paying
+            setPaymentState('cancelled');
+            setOrderError('Payment was cancelled. You can try again.');
+            trackPaymentCancelled({ orderId: orderData.orderId });
+            // Notify backend to mark order as failed
+            await fetch('/api/payment/cancel', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId: orderData.orderId }),
+            });
+            isProcessing.current = false;
+            setLoading(false);
+          },
+        },
+        handler: async (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) => {
+          // ── Verify payment on backend ──────────────────────────────────────
+          setLoading(true);
+          const verifyRes = await fetch('/api/payment/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: orderData.orderId,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            }),
+          });
+
+          const verifyData = await verifyRes.json();
+
+          if (!verifyRes.ok || !verifyData.success) {
+            setPaymentState('failed');
+            setOrderError(verifyData.error || 'Payment verification failed. Please contact support.');
+            trackPaymentFailed({ orderId: orderData.orderId, reason: verifyData.error });
+            setLoading(false);
+            isProcessing.current = false;
+            return;
+          }
+
+          // ── Payment verified — track and redirect ──────────────────────────
+          trackPurchase({
+            transactionId: response.razorpay_payment_id,
+            value: bundle.offerPrice,
+            currency: 'INR',
+            itemId: bundle.id,
+            itemName: bundle.name,
+          });
+
+          setPaymentState('success');
+          isProcessing.current = false;
+          window.location.href = `/download?order=${verifyData.orderId}`;
+        },
+      };
+
+      const rzp = new window.Razorpay(razorpayOptions);
+      rzp.open();
       setLoading(false);
-      return;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      setOrderError(msg);
+      setLoading(false);
+      isProcessing.current = false;
     }
-
-    setPendingOrderId(order.id);
-    setLoading(false);
-    setStep('payment');
   };
 
-  const handlePayment = async () => {
-    if (!pendingOrderId || !bundle) return;
-    setLoading(true);
-    trackBeginCheckout({ value: bundle.offerPrice, currency: 'INR' });
-
-    // Mark order as paid in Supabase
-    const paidOrder = await orderService.markOrderPaid(pendingOrderId);
-
-    if (!paidOrder) {
-      setOrderError('Payment confirmation failed. Please contact support.');
-      setLoading(false);
-      return;
-    }
-
-    trackPurchase({
-      transactionId: paidOrder.orderNumber,
-      value: paidOrder.amount,
-      currency: 'INR',
-    });
-
-    setLoading(false);
-    // Redirect to download page with order info
-    window.location.href = `/download?order=${paidOrder.id}`;
-  };
-
-  const discount = bundle ? Math.round(((bundle.originalPrice - bundle.offerPrice) / bundle.originalPrice) * 100) : 95;
+  const discount = bundle
+    ? Math.round(((bundle.originalPrice - bundle.offerPrice) / bundle.originalPrice) * 100)
+    : 95;
 
   return (
-    <div className="min-h-screen bg-bg text-fg" style={{ background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(139,26,26,0.4) 0%, #0D0505 60%)' }}>
+    <div
+      className="min-h-screen bg-bg text-fg"
+      style={{ background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(139,26,26,0.4) 0%, #0D0505 60%)' }}
+    >
       {/* Header */}
       <header className="py-5 px-4 sm:px-6 border-b border-accent/10 flex items-center justify-between max-w-5xl mx-auto">
         <Link href="/homepage" className="flex items-center gap-2">
@@ -136,176 +250,128 @@ function CheckoutContent() {
             <h1 className="font-display font-900 text-2xl sm:text-3xl text-fg mb-2">Complete Your Order</h1>
             <p className="text-fg-dim text-sm mb-8">Fill in your details to get instant access</p>
 
-            {orderError && (
-              <div className="mb-4 bg-red-900/30 border border-red-500/30 rounded-xl px-4 py-3">
-                <p className="text-red-400 text-sm">{orderError}</p>
+            {/* Error / state banners */}
+            {orderError && paymentState !== 'success' && (
+              <div
+                className={`mb-4 rounded-xl px-4 py-3 border ${
+                  paymentState === 'cancelled'
+                    ? 'bg-yellow-900/20 border-yellow-500/30'
+                    : 'bg-red-900/30 border-red-500/30'
+                }`}
+              >
+                <p
+                  className={`text-sm ${
+                    paymentState === 'cancelled' ? 'text-yellow-400' : 'text-red-400'
+                  }`}
+                >
+                  {paymentState === 'cancelled' ? '⚠️ ' : '❌ '}
+                  {orderError}
+                </p>
               </div>
             )}
 
-            {step === 'form' ? (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Name */}
-                <div>
-                  <label className="block text-fg-muted text-sm font-600 mb-1.5 font-display">Full Name</label>
-                  <input
-                    type="text"
-                    placeholder="Priya Sharma"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="input-dark w-full rounded-xl px-4 py-3.5 text-fg text-sm"
-                  />
-                  {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
-                </div>
-
-                {/* Email */}
-                <div>
-                  <label className="block text-fg-muted text-sm font-600 mb-1.5 font-display">Email Address</label>
-                  <input
-                    type="email"
-                    placeholder="priya@gmail.com"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="input-dark w-full rounded-xl px-4 py-3.5 text-fg text-sm"
-                  />
-                  {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
-                  <p className="text-fg-dim text-xs mt-1">Download link will be sent to this email</p>
-                </div>
-
-                {/* Phone */}
-                <div>
-                  <label className="block text-fg-muted text-sm font-600 mb-1.5 font-display">Phone Number</label>
-                  <div className="flex gap-2">
-                    <div className="input-dark rounded-xl px-3 py-3.5 text-fg-dim text-sm flex items-center gap-1 flex-shrink-0">
-                      <span>🇮🇳</span>
-                      <span>+91</span>
-                    </div>
-                    <input
-                      type="tel"
-                      placeholder="98765 43210"
-                      value={form.phone}
-                      onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                      className="input-dark flex-1 rounded-xl px-4 py-3.5 text-fg text-sm"
-                    />
-                  </div>
-                  {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
-                </div>
-
-                {/* Trust badges */}
-                <div className="grid grid-cols-3 gap-3 py-4">
-                  {[
-                    { icon: '🔒', text: 'Secure SSL' },
-                    { icon: '⚡', text: 'Instant Access' },
-                    { icon: '💳', text: 'Safe Payment' },
-                  ].map((badge, i) => (
-                    <div key={i} className="glass rounded-xl p-3 text-center border-gold">
-                      <div className="text-xl mb-1">{badge.icon}</div>
-                      <div className="text-fg-dim text-xs font-600">{badge.text}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading || bundleLoading || !bundle}
-                  className="btn-cta w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl text-white font-display font-800 text-lg shadow-cta disabled:opacity-60"
-                >
-                  {loading ? (
-                    <span className="flex items-center gap-2">
-                      <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                      Processing...
-                    </span>
-                  ) : (
-                    <>
-                      <span>Proceed to Payment</span>
-                      <Icon name="ArrowRightIcon" size={20} className="text-white" />
-                    </>
-                  )}
-                </button>
-              </form>
-            ) : (
-              /* Payment Step */
-              <div className="animate-fade-scale">
-                <div className="glass rounded-2xl p-6 border-gold mb-6">
-                  <h3 className="font-display font-800 text-fg text-lg mb-4">Payment Details</h3>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-fg-muted text-xs font-600 mb-1.5 uppercase tracking-wider">Card Number</label>
-                      <div className="input-dark rounded-xl px-4 py-3.5 flex items-center justify-between">
-                        <span className="text-fg-dim text-sm">4242 4242 4242 4242</span>
-                        <div className="flex gap-1">
-                          <div className="w-8 h-5 bg-white/20 rounded text-[8px] flex items-center justify-center text-white font-700">VISA</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-fg-muted text-xs font-600 mb-1.5 uppercase tracking-wider">Expiry</label>
-                        <div className="input-dark rounded-xl px-4 py-3.5">
-                          <span className="text-fg-dim text-sm">MM / YY</span>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-fg-muted text-xs font-600 mb-1.5 uppercase tracking-wider">CVV</label>
-                        <div className="input-dark rounded-xl px-4 py-3.5">
-                          <span className="text-fg-dim text-sm">•••</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 p-3 rounded-xl bg-primary/10 border border-primary/30">
-                    <p className="text-fg-dim text-xs text-center">
-                      💡 Demo UI — Connect Stripe/Razorpay API for live payments.
-                    </p>
-                  </div>
-                </div>
-
-                {/* UPI Option */}
-                <div className="glass rounded-2xl p-4 border-gold mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-purple-600/20 flex items-center justify-center">
-                      <span className="text-sm">📱</span>
-                    </div>
-                    <div>
-                      <div className="font-display font-700 text-fg text-sm">Pay via UPI</div>
-                      <div className="text-fg-dim text-xs">PhonePe, GPay, Paytm, UPI ID</div>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handlePayment}
-                  disabled={loading}
-                  className="btn-cta w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl text-white font-display font-800 text-xl shadow-cta disabled:opacity-60"
-                >
-                  {loading ? (
-                    <span className="flex items-center gap-2">
-                      <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                      Processing Payment...
-                    </span>
-                  ) : (
-                    <>
-                      <Icon name="LockClosedIcon" size={18} className="text-white" />
-                      <span>Pay ₹{bundle?.offerPrice ?? 79} Securely</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setStep('form')}
-                  className="w-full mt-3 text-fg-dim text-sm text-center hover:text-fg transition-colors"
-                >
-                  ← Back to details
-                </button>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Name */}
+              <div>
+                <label className="block text-fg-muted text-sm font-600 mb-1.5 font-display">Full Name</label>
+                <input
+                  type="text"
+                  placeholder="Priya Sharma"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="input-dark w-full rounded-xl px-4 py-3.5 text-fg text-sm"
+                />
+                {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
               </div>
-            )}
+
+              {/* Email */}
+              <div>
+                <label className="block text-fg-muted text-sm font-600 mb-1.5 font-display">Email Address</label>
+                <input
+                  type="email"
+                  placeholder="priya@gmail.com"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="input-dark w-full rounded-xl px-4 py-3.5 text-fg text-sm"
+                />
+                {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
+                <p className="text-fg-dim text-xs mt-1">Download link will be sent to this email</p>
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block text-fg-muted text-sm font-600 mb-1.5 font-display">Phone Number</label>
+                <div className="flex gap-2">
+                  <div className="input-dark rounded-xl px-3 py-3.5 text-fg-dim text-sm flex items-center gap-1 flex-shrink-0">
+                    <span>🇮🇳</span>
+                    <span>+91</span>
+                  </div>
+                  <input
+                    type="tel"
+                    placeholder="98765 43210"
+                    value={form.phone}
+                    onChange={(e) =>
+                      setForm({ ...form, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })
+                    }
+                    className="input-dark flex-1 rounded-xl px-4 py-3.5 text-fg text-sm"
+                  />
+                </div>
+                {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
+              </div>
+
+              {/* Trust badges */}
+              <div className="grid grid-cols-3 gap-3 py-4">
+                {[
+                  { icon: '🔒', text: 'Secure SSL' },
+                  { icon: '⚡', text: 'Instant Access' },
+                  { icon: '💳', text: 'Safe Payment' },
+                ].map((badge, i) => (
+                  <div key={i} className="glass rounded-xl p-3 text-center border-gold">
+                    <div className="text-xl mb-1">{badge.icon}</div>
+                    <div className="text-fg-dim text-xs font-600">{badge.text}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Powered by Razorpay badge */}
+              <div className="flex items-center justify-center gap-2 py-1">
+                <Icon name="ShieldCheckIcon" size={14} className="text-blue-400" />
+                <span className="text-fg-dim text-xs">Payments secured by Razorpay</span>
+              </div>
+
+              <button
+                type="submit"
+                id="checkout-pay-btn"
+                disabled={loading || bundleLoading || !bundle}
+                className="btn-cta w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl text-white font-display font-800 text-lg shadow-cta disabled:opacity-60"
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    {paymentState === 'success' ? 'Redirecting...' : 'Processing...'}
+                  </span>
+                ) : (
+                  <>
+                    <Icon name="LockClosedIcon" size={18} className="text-white" />
+                    <span>
+                      Pay ₹{bundle?.offerPrice ?? 79} with Razorpay
+                    </span>
+                  </>
+                )}
+              </button>
+
+              {(paymentState === 'failed' || paymentState === 'cancelled') && !loading && (
+                <p className="text-center text-fg-dim text-xs mt-2">
+                  Having trouble? Contact us at{' '}
+                  <a href="mailto:support@reelstore.co" className="text-accent hover:underline">
+                    support@reelstore.co
+                  </a>
+                </p>
+              )}
+            </form>
           </div>
 
           {/* Right: Order Summary */}
@@ -351,7 +417,9 @@ function CheckoutContent() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-green-400 font-700">Discount ({discount}% OFF)</span>
-                      <span className="text-green-400 font-700">-₹{(bundle.originalPrice - bundle.offerPrice).toLocaleString()}</span>
+                      <span className="text-green-400 font-700">
+                        -₹{(bundle.originalPrice - bundle.offerPrice).toLocaleString()}
+                      </span>
                     </div>
                   </div>
 
@@ -372,9 +440,13 @@ function CheckoutContent() {
                             <span>{f}</span>
                           </div>
                         ))
-                      : ['Instant Google Drive Access', 'HD Quality No Watermark', 'Lifetime Access', 'Email Confirmation'].map((item, i) => (
-                          <div key={i} className="text-fg-muted text-sm">✅ {item}</div>
-                        ))}
+                      : ['Instant Google Drive Access', 'HD Quality No Watermark', 'Lifetime Access', 'Email Confirmation'].map(
+                          (item, i) => (
+                            <div key={i} className="text-fg-muted text-sm">
+                              ✅ {item}
+                            </div>
+                          )
+                        )}
                   </div>
                 </>
               ) : (
@@ -386,7 +458,7 @@ function CheckoutContent() {
               {/* Trust */}
               <div className="mt-6 pt-6 border-t border-accent/10 flex items-center justify-center gap-3">
                 <Icon name="ShieldCheckIcon" size={16} className="text-green-400" />
-                <span className="text-fg-dim text-xs">256-bit SSL Encrypted · Secure Payment</span>
+                <span className="text-fg-dim text-xs">256-bit SSL Encrypted · Razorpay Secured</span>
               </div>
             </div>
 
@@ -415,7 +487,10 @@ export default function Checkout() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-bg text-fg flex items-center justify-center" style={{ background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(139,26,26,0.4) 0%, #0D0505 60%)' }}>
+        <div
+          className="min-h-screen bg-bg text-fg flex items-center justify-center"
+          style={{ background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(139,26,26,0.4) 0%, #0D0505 60%)' }}
+        >
           <div className="w-10 h-10 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
         </div>
       }
