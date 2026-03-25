@@ -72,8 +72,8 @@ export default function ContactPage() {
           <h3 className="text-2xl font-900 text-accent mb-4">Business Address</h3>
           <p className="text-fg-muted font-600 text-lg mb-2">ReelStore Technologies</p>
           <p className="text-fg-dim text-base max-w-sm mb-6">
-            Plot No. 45, Sector 18,<br />
-            Gurugram, Haryana 122015,<br />
+            620 sector 70, mohali,<br />
+            Punjab 160071,<br />
             India
           </p>
           <p className="text-fg-dim text-sm italic">
