@@ -68,9 +68,9 @@ const BundleCategories: React.FC = () => {
           <span className="text-accent text-xs font-display font-700 uppercase tracking-widest">🎬 What&apos;s Inside</span>
         </div>
         <h2 className="font-display font-900 text-3xl sm:text-5xl text-fg tracking-tight mb-4">
-          <span className="text-gold">{loading ? '...' : `${categories.length} Epic Categories`}</span>
+          <span className="text-gold">{loading ? '...' : `${categories.length} Assets Categories`}</span>
           <br />
-          <span className="text-fg-muted font-400 text-2xl sm:text-3xl">All in One Bundle</span>
+          <span className="text-fg-muted font-400 text-2xl sm:text-3xl">All in One Assets Pack</span>
         </h2>
         <p className="text-fg-dim text-base sm:text-lg max-w-xl mx-auto">
           From AI creatures to cyberpunk cities — every category of viral content is included.

@@ -250,10 +250,10 @@ export default function AdminDashboard() {
             <div className="flex justify-center mb-4">
               <div className="flex items-center gap-2">
                 <AppLogo size={40} />
-                <span className="font-display font-900 text-2xl text-accent">ReelStore</span>
+                <span className="font-display font-900 text-2xl text-accent">ReelStore Technologies</span>
               </div>
             </div>
-            <h1 className="font-display font-900 text-2xl text-fg mb-2">Admin Login</h1>
+            <h1 className="font-display font-900 text-2xl text-fg mb-2">Admin Dashboard</h1>
             <p className="text-fg-dim text-sm">Access the creator dashboard</p>
           </div>
           <div className="glass rounded-3xl p-8" style={{ border: '1px solid rgba(201,168,76,0.3)', boxShadow: '0 0 60px rgba(139,26,26,0.3)' }}>
@@ -321,8 +321,8 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-3">
             <AppLogo size={32} />
             <div>
-              <div className="font-display font-800 text-accent text-base">ReelStore</div>
-              <div className="text-fg-dim text-xs">Admin Panel</div>
+              <div className="font-display font-800 text-accent text-base">ReelStore Tech</div>
+              <div className="text-fg-dim text-xs">Admin Dashboard</div>
             </div>
           </div>
         </div>
@@ -479,8 +479,8 @@ export default function AdminDashboard() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="font-display font-800 text-fg text-xl">Bundle Management</h2>
-                  <p className="text-fg-dim text-xs mt-0.5">Only <span className="text-green-400 font-700">Active</span> bundles appear on the website. Draft &amp; Inactive are hidden.</p>
+                  <h2 className="font-display font-800 text-fg text-xl">Assets Pack Management</h2>
+                  <p className="text-fg-dim text-xs mt-0.5">Only <span className="text-green-400 font-700">Active</span> packs appear on the website.</p>
                 </div>
                 <button onClick={openAddBundle} className="btn-cta flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-display font-700 text-sm shadow-cta">
                   <Icon name="PlusIcon" size={16} className="text-white" />
