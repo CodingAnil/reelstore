@@ -14,11 +14,11 @@ import {
 } from '@/lib/analytics';
 import { bundleService, Bundle } from '@/lib/services/reelstoreService';
 
-// ─── Razorpay global type ─────────────────────────────────────────────────────
+// ─── Cashfree global type ─────────────────────────────────────────────────────
 declare global {
   interface Window {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Razorpay: new (options: Record<string, unknown>) => { open(): void };
+    Cashfree: any;
   }
 }
 
@@ -34,15 +34,15 @@ interface FormErrors {
   phone?: string;
 }
 
-// ─── Load Razorpay SDK lazily ─────────────────────────────────────────────────
-function loadRazorpayScript(): Promise<boolean> {
+// ─── Load Cashfree SDK ────────────────────────────────────────────────────────
+function loadCashfreeScript(): Promise<boolean> {
   return new Promise((resolve) => {
-    if (typeof window !== 'undefined' && window.Razorpay) {
+    if (typeof window !== 'undefined' && window.Cashfree) {
       resolve(true);
       return;
     }
     const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
     script.onload = () => resolve(true);
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
@@ -53,6 +53,7 @@ function loadRazorpayScript(): Promise<boolean> {
 function CheckoutContent() {
   const searchParams = useSearchParams();
   const bundleId = searchParams.get('bundle');
+  const returnOrderId = searchParams.get('order_id'); // Cashfree redirect param
 
   const [form, setForm] = useState<FormData>({ name: '', email: '', phone: '' });
   const [errors, setErrors] = useState<FormErrors>({});
@@ -66,7 +67,8 @@ function CheckoutContent() {
   const isProcessing = useRef(false);
 
   useEffect(() => {
-    const loadBundle = async () => {
+    const init = async () => {
+      // 1. Load bundle data
       setBundleLoading(true);
       let loaded: Bundle | null = null;
       if (bundleId) {
@@ -77,9 +79,34 @@ function CheckoutContent() {
       }
       setBundle(loaded);
       setBundleLoading(false);
+
+      // 2. Handle payment return if order_id is present
+      if (returnOrderId) {
+        setLoading(true);
+        try {
+          const verifyRes = await fetch('/api/payments/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId: returnOrderId }),
+          });
+          const verifyData = await verifyRes.json();
+          if (verifyRes.ok && verifyData.success) {
+            setPaymentState('success');
+            window.location.href = `/download?order=${verifyData.orderId}`;
+          } else {
+            setPaymentState('failed');
+            setOrderError(verifyData.error || 'Payment verification failed. Please check your bank and try again.');
+          }
+        } catch (err) {
+          console.error('Return verification error:', err);
+          setOrderError('Something went wrong verifying your payment.');
+        } finally {
+          setLoading(false);
+        }
+      }
     };
-    loadBundle();
-  }, [bundleId]);
+    init();
+  }, [bundleId, returnOrderId]);
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
@@ -102,17 +129,17 @@ function CheckoutContent() {
     trackFormSubmit('checkout-form');
 
     try {
-      // ── Load Razorpay SDK ───────────────────────────────────────────────────
-      const sdkLoaded = await loadRazorpayScript();
+      // ── Load Cashfree SDK ───────────────────────────────────────────────────
+      const sdkLoaded = await loadCashfreeScript();
       if (!sdkLoaded) {
-        setOrderError('Payment service could not be loaded. Please check your internet connection and try again.');
+        setOrderError('Payment service could not be loaded. Please check your internet connection.');
         setLoading(false);
         isProcessing.current = false;
         return;
       }
 
       // ── Create order on backend ─────────────────────────────────────────────
-      const res = await fetch('/api/payment/create-order', {
+      const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -128,7 +155,7 @@ function CheckoutContent() {
 
       const orderData = await res.json();
 
-      if (!res.ok || !orderData.razorpayOrderId) {
+      if (!res.ok || !orderData.payment_session_id) {
         setOrderError(orderData.error || 'Failed to create order. Please try again.');
         setLoading(false);
         isProcessing.current = false;
@@ -137,83 +164,19 @@ function CheckoutContent() {
 
       trackBeginCheckout({ value: bundle.offerPrice, currency: 'INR' });
 
-      // ── Open Razorpay Checkout ──────────────────────────────────────────────
-      const razorpayOptions = {
-        key: orderData.keyId,
-        amount: orderData.amount,           // In paise
-        currency: orderData.currency,
-        name: 'ReelStore',
-        description: bundle.name,
-        order_id: orderData.razorpayOrderId,
-        prefill: {
-          name: form.name,
-          email: form.email,
-          contact: `+91${form.phone}`,
-        },
-        theme: { color: '#C9A84C' },
-        modal: {
-          ondismiss: async () => {
-            // User closed the Razorpay modal without paying
-            setPaymentState('cancelled');
-            setOrderError('Payment was cancelled. You can try again.');
-            trackPaymentCancelled({ orderId: orderData.orderId });
-            // Notify backend to mark order as failed
-            await fetch('/api/payment/cancel', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ orderId: orderData.orderId }),
-            });
-            isProcessing.current = false;
-            setLoading(false);
-          },
-        },
-        handler: async (response: {
-          razorpay_order_id: string;
-          razorpay_payment_id: string;
-          razorpay_signature: string;
-        }) => {
-          // ── Verify payment on backend ──────────────────────────────────────
-          setLoading(true);
-          const verifyRes = await fetch('/api/payment/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId: orderData.orderId,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-            }),
-          });
+      // ── Initialize Cashfree ────────────────────────────────────────────────
+      const isProd = process.env.NEXT_PUBLIC_CASHFREE_ENV === 'PRODUCTION';
+      const cashfree = window.Cashfree({
+        mode: isProd ? 'production' : 'sandbox',
+      });
 
-          const verifyData = await verifyRes.json();
-
-          if (!verifyRes.ok || !verifyData.success) {
-            setPaymentState('failed');
-            setOrderError(verifyData.error || 'Payment verification failed. Please contact support.');
-            trackPaymentFailed({ orderId: orderData.orderId, reason: verifyData.error });
-            setLoading(false);
-            isProcessing.current = false;
-            return;
-          }
-
-          // ── Payment verified — track and redirect ──────────────────────────
-          trackPurchase({
-            transactionId: response.razorpay_payment_id,
-            value: bundle.offerPrice,
-            currency: 'INR',
-            itemId: bundle.id,
-            itemName: bundle.name,
-          });
-
-          setPaymentState('success');
-          isProcessing.current = false;
-          window.location.href = `/download?order=${verifyData.orderId}`;
-        },
-      };
-
-      const rzp = new window.Razorpay(razorpayOptions);
-      rzp.open();
-      setLoading(false);
+      // ── Open Cashfree Checkout ─────────────────────────────────────────────
+      cashfree.checkout({
+        paymentSessionId: orderData.payment_session_id,
+        redirectTarget: '_self', // Use self to return to this page for verification
+      });
+      
+      // Note: Loading state remains true until redirection or error
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An unexpected error occurred.';
       setOrderError(msg);
@@ -333,10 +296,10 @@ function CheckoutContent() {
                 ))}
               </div>
 
-              {/* Powered by Razorpay badge */}
+              {/* Powered by Cashfree badge */}
               <div className="flex items-center justify-center gap-2 py-1">
                 <Icon name="ShieldCheckIcon" size={14} className="text-blue-400" />
-                <span className="text-fg-dim text-xs">Payments secured by Razorpay</span>
+                <span className="text-fg-dim text-xs">Payments secured by Cashfree</span>
               </div>
 
               <button
@@ -357,7 +320,7 @@ function CheckoutContent() {
                   <>
                     <Icon name="LockClosedIcon" size={18} className="text-white" />
                     <span>
-                      Pay ₹{bundle?.offerPrice ?? 79} with Razorpay
+                      Pay ₹{bundle?.offerPrice ?? 79} with Cashfree
                     </span>
                   </>
                 )}
@@ -458,7 +421,7 @@ function CheckoutContent() {
               {/* Trust */}
               <div className="mt-6 pt-6 border-t border-accent/10 flex items-center justify-center gap-3">
                 <Icon name="ShieldCheckIcon" size={16} className="text-green-400" />
-                <span className="text-fg-dim text-xs">256-bit SSL Encrypted · Razorpay Secured</span>
+                <span className="text-fg-dim text-xs">256-bit SSL Encrypted · Cashfree Secured</span>
               </div>
             </div>
 
