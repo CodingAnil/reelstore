@@ -43,9 +43,8 @@ export interface Order {
   currency: string;
   status: 'pending' | 'paid' | 'failed' | 'refunded';
   paymentId: string | null;
-  razorpayOrderId: string | null;
-  razorpayPaymentId: string | null;
-  razorpaySignature: string | null;
+  cashfreeOrderId: string | null;
+  cashfreePaymentSessionId: string | null;
   downloadUrl: string | null;
   createdAt: string;
   updatedAt: string;
@@ -106,9 +105,8 @@ function mapOrder(row: Record<string, unknown>): Order {
     currency: (row.currency as string) || 'INR',
     status: (row.status as 'pending' | 'paid' | 'failed' | 'refunded') || 'pending',
     paymentId: (row.payment_id as string) || null,
-    razorpayOrderId: (row.razorpay_order_id as string) || null,
-    razorpayPaymentId: (row.razorpay_payment_id as string) || null,
-    razorpaySignature: (row.razorpay_signature as string) || null,
+    cashfreeOrderId: (row.cashfree_order_id as string) || null,
+    cashfreePaymentSessionId: (row.cashfree_payment_session_id as string) || null,
     downloadUrl: (row.download_url as string) || null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,

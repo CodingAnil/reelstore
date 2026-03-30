@@ -386,7 +386,7 @@ export default function AdminDashboard() {
                     value: statsLoading ? '...' : stats.paidOrders.toString(),
                     icon: '✅',
                     color: 'text-accent',
-                    hint: 'Razorpay verified',
+                    hint: 'Cashfree verified',
                   },
                   {
                     label: 'Failed / Cancelled',
