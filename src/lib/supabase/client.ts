@@ -38,14 +38,18 @@ const setCookie = (name: string, value: string, options?: Record<string, unknown
   document.cookie = s;
 };
 
+let client: ReturnType<typeof createBrowserClient> | null = null;
+
 export function createClient() {
-  return createBrowserClient(
+  if (client) return client;
+  
+  client = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll: () => canUseCookies() ? fromCookies() : fromStorage(),
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: Array<{ name: string; value: string; options: any }>) {
           if (typeof document === 'undefined') return;
           if (canUseCookies()) {
             cookiesToSet.forEach(({ name, value, options }) =>
@@ -65,4 +69,6 @@ export function createClient() {
       },
     }
   );
+  
+  return client;
 }

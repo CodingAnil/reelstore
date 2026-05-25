@@ -1,15 +1,22 @@
+'use client';
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AppLogo from '@/components/ui/AppLogo';
 
 const Footer: React.FC = () => {
+  const router = useRouter();
+
   return (
     <footer className="border-t border-accent/10 py-10 px-4">
       <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* Logo + Links */}
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <AppLogo size={28} />
+            <AppLogo 
+              size={28} 
+              onClick={() => router.push('/admin-dashboard')}
+            />
             <span className="font-display font-700 text-sm text-accent">ReelStore</span>
           </div>
           <nav className="flex items-center gap-5">
@@ -24,12 +31,6 @@ const Footer: React.FC = () => {
               className="text-fg-dim text-sm font-medium hover:text-fg transition-colors"
             >
               About
-            </Link>
-            <Link
-              href="/admin-dashboard"
-              className="text-fg-dim text-sm font-medium hover:text-fg transition-colors"
-            >
-              Admin
             </Link>
           </nav>
         </div>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import AppLogo from '@/components/ui/AppLogo';
 import AppImage from '@/components/ui/AppImage';
 import Icon from '@/components/ui/AppIcon';
+import FileUpload from '@/components/admin/FileUpload';
 import { bundleService, categoryService, orderService, Bundle, Category, Order } from '@/lib/services/reelstoreService';
 
 type Tab = 'overview' | 'bundles' | 'categories' | 'orders' | 'settings';
@@ -23,6 +24,7 @@ const emptyBundle = {
   status: 'draft' as 'draft' | 'active' | 'inactive',
   isFeatured: false,
   downloadUrl: '',
+  mediaMetadata: {} as Record<string, any>,
 };
 
 const emptyCategory = {
@@ -31,12 +33,13 @@ const emptyCategory = {
   demoVideoUrl: '',
   description: '',
   status: 'active' as 'active' | 'inactive',
+  mediaMetadata: {} as Record<string, any>,
 };
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [adminNumber, setAdminNumber] = useState('');
   const [loginError, setLoginError] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -104,6 +107,18 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    const session = localStorage.getItem('admin_session');
+    if (session) {
+      const { expiry } = JSON.parse(session);
+      if (Date.now() < expiry) {
+        setIsLoggedIn(true);
+      } else {
+        localStorage.removeItem('admin_session');
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     if (isLoggedIn && activeTab === 'bundles') loadBundles();
     if (isLoggedIn && activeTab === 'categories') loadCategories();
     if (isLoggedIn && activeTab === 'orders') loadOrders();
@@ -115,12 +130,20 @@ export default function AdminDashboard() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginForm.email === 'admin@reelstore.com' && loginForm.password === 'admin123') {
+    if (adminNumber === '2533') {
       setIsLoggedIn(true);
       setLoginError('');
+      // Store session for 30 days
+      const expiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
+      localStorage.setItem('admin_session', JSON.stringify({ expiry }));
     } else {
-      setLoginError('Invalid credentials. Try admin@reelstore.com / admin123');
+      setLoginError('Invalid admin number. Please try again.');
     }
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    localStorage.removeItem('admin_session');
   };
 
   // ─── Bundle handlers ─────────────────────────────────────────────────────────
@@ -148,6 +171,7 @@ export default function AdminDashboard() {
       status: bundle.status,
       isFeatured: bundle.isFeatured,
       downloadUrl: bundle.downloadUrl,
+      mediaMetadata: bundle.mediaMetadata || {},
     });
     setBundleFeaturesInput(bundle.features.join('\n'));
     setShowBundleModal(true);
@@ -199,6 +223,7 @@ export default function AdminDashboard() {
       demoVideoUrl: cat.demoVideoUrl,
       description: cat.description,
       status: cat.status,
+      mediaMetadata: cat.mediaMetadata || {},
     });
     setShowCategoryModal(true);
   };
@@ -258,6 +283,7 @@ export default function AdminDashboard() {
           </div>
           <div className="glass rounded-3xl p-8" style={{ border: '1px solid rgba(201,168,76,0.3)', boxShadow: '0 0 60px rgba(139,26,26,0.3)' }}>
             <form onSubmit={handleLogin} className="space-y-5">
+              {/* Future Email Auth - Commented for now
               <div>
                 <label className="block text-fg-muted text-sm font-600 mb-1.5 font-display">Email</label>
                 <input type="email" placeholder="admin@reelstore.com" value={loginForm.email} onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })} className="input-dark w-full rounded-xl px-4 py-3.5 text-fg text-sm" />
@@ -266,15 +292,26 @@ export default function AdminDashboard() {
                 <label className="block text-fg-muted text-sm font-600 mb-1.5 font-display">Password</label>
                 <input type="password" placeholder="••••••••" value={loginForm.password} onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} className="input-dark w-full rounded-xl px-4 py-3.5 text-fg text-sm" />
               </div>
+              */}
+              <div>
+                <label className="block text-fg-muted text-sm font-600 mb-1.5 font-display">Admin Code</label>
+                <input 
+                  type="password" 
+                  placeholder="Enter admin number" 
+                  value={adminNumber} 
+                  onChange={(e) => setAdminNumber(e.target.value)} 
+                  className="input-dark w-full rounded-xl px-4 py-3.5 text-fg text-sm text-center tracking-[0.5em] font-900" 
+                />
+              </div>
               {loginError && (
                 <div className="bg-red-900/30 border border-red-500/30 rounded-xl px-4 py-3">
                   <p className="text-red-400 text-sm">{loginError}</p>
                 </div>
               )}
-              <div className="bg-primary/10 border border-primary/20 rounded-xl px-4 py-3">
-                <p className="text-fg-dim text-xs text-center">Demo: admin@reelstore.com / admin123</p>
+              <div className="bg-primary/10 border border-primary/20 rounded-xl px-4 py-3 text-center">
+                <p className="text-fg-dim text-xs">Access code required for dashboard entry</p>
               </div>
-              <button type="submit" className="btn-cta w-full py-4 rounded-2xl text-white font-display font-800 text-lg shadow-cta">Login to Dashboard</button>
+              <button type="submit" className="btn-cta w-full py-4 rounded-2xl text-white font-display font-800 text-lg shadow-cta">Access Dashboard</button>
             </form>
           </div>
           <div className="text-center mt-6">
@@ -336,7 +373,7 @@ export default function AdminDashboard() {
           ))}
         </nav>
         <div className="p-4 border-t border-accent/10">
-          <button onClick={() => setIsLoggedIn(false)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-fg-dim text-sm font-600 hover:bg-red-900/20 hover:text-red-400 transition-colors">
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-fg-dim text-sm font-600 hover:bg-red-900/20 hover:text-red-400 transition-colors">
             <Icon name="ArrowRightOnRectangleIcon" size={18} />
             Logout
           </button>
@@ -566,8 +603,6 @@ export default function AdminDashboard() {
                         { key: 'reelsCount', label: 'Reels Count', placeholder: '500', type: 'number' },
                         { key: 'originalPrice', label: 'Original Price (₹)', placeholder: '1499', type: 'number' },
                         { key: 'offerPrice', label: 'Offer Price (₹)', placeholder: '79', type: 'number' },
-                        { key: 'thumbnailUrl', label: 'Thumbnail Image URL', placeholder: 'https://...', type: 'text' },
-                        { key: 'mockupImageUrl', label: 'Product Mockup Image URL', placeholder: 'https://...', type: 'text' },
                       ].map((field) => (
                         <div key={field.key}>
                           <label className="block text-fg-muted text-xs font-600 mb-1 uppercase tracking-wider">{field.label}</label>
@@ -580,6 +615,34 @@ export default function AdminDashboard() {
                           />
                         </div>
                       ))}
+
+                      {/* R2 Media Uploads */}
+                      <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 border-y border-accent/10 py-5 my-2">
+                        <FileUpload 
+                          label="Main Thumbnail (Marketplace Card)"
+                          value={bundleForm.thumbnailUrl}
+                          type="image"
+                          accept="image/*"
+                          onChange={(url, meta) => setBundleForm({ 
+                            ...bundleForm, 
+                            thumbnailUrl: url,
+                            mediaMetadata: { ...(bundleForm.mediaMetadata || {}), thumbnail: meta || bundleForm.mediaMetadata?.thumbnail }
+                          })}
+                          hint="Featured on homepage cards"
+                        />
+                        <FileUpload 
+                          label="Product Mockup (Landing Page)"
+                          value={bundleForm.mockupImageUrl}
+                          type="image"
+                          accept="image/*"
+                          onChange={(url, meta) => setBundleForm({ 
+                            ...bundleForm, 
+                            mockupImageUrl: url,
+                            mediaMetadata: { ...(bundleForm.mediaMetadata || {}), mockup: meta || bundleForm.mediaMetadata?.mockup }
+                          })}
+                          hint="Shown in pricing/hero sections"
+                        />
+                      </div>
                       <div className="sm:col-span-2">
                         <label className="block text-fg-muted text-xs font-600 mb-1 uppercase tracking-wider">Google Drive Download URL</label>
                         <input type="text" placeholder="https://drive.google.com/drive/folders/..." value={bundleForm.downloadUrl} onChange={(e) => setBundleForm({ ...bundleForm, downloadUrl: e.target.value })} className="input-dark w-full rounded-xl px-4 py-3 text-fg text-sm" />
@@ -711,9 +774,19 @@ export default function AdminDashboard() {
                         <label className="block text-fg-muted text-xs font-600 mb-1 uppercase tracking-wider">Reels Count</label>
                         <input type="number" placeholder="120" value={categoryForm.reelsCount} onChange={(e) => setCategoryForm({ ...categoryForm, reelsCount: Number(e.target.value) })} className="input-dark w-full rounded-xl px-4 py-3 text-fg text-sm" />
                       </div>
-                      <div>
-                        <label className="block text-fg-muted text-xs font-600 mb-1 uppercase tracking-wider">Demo Video URL</label>
-                        <input type="text" placeholder="https://youtube.com/..." value={categoryForm.demoVideoUrl} onChange={(e) => setCategoryForm({ ...categoryForm, demoVideoUrl: e.target.value })} className="input-dark w-full rounded-xl px-4 py-3 text-fg text-sm" />
+                      <div className="border-y border-accent/10 py-4 my-2">
+                        <FileUpload 
+                          label="Category Preview Video"
+                          value={categoryForm.demoVideoUrl}
+                          type="video"
+                          accept="video/*"
+                          onChange={(url, meta) => setCategoryForm({ 
+                            ...categoryForm, 
+                            demoVideoUrl: url,
+                            mediaMetadata: { ...(categoryForm.mediaMetadata || {}), demo_video: meta || categoryForm.mediaMetadata?.demo_video }
+                          })}
+                          hint="Upload MP4/MOV short preview"
+                        />
                       </div>
                       <div>
                         <label className="block text-fg-muted text-xs font-600 mb-1 uppercase tracking-wider">Description</label>

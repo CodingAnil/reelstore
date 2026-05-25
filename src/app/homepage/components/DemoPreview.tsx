@@ -8,7 +8,7 @@ const demos = [
   title: 'Godzilla vs Dragon',
   category: 'AI Creatures',
   views: '2.4M',
-  thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_1c8eb22c3-1772824588961.png",
+  thumbnail: "https://images.unsplash.com/photo-1542751371-adc38448a05e",
   alt: 'Godzilla vs Dragon AI reel thumbnail',
   duration: '0:15'
 },
@@ -17,7 +17,7 @@ const demos = [
   title: 'Iron Mech Battle',
   category: 'Sci-Fi',
   views: '1.8M',
-  thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_12a9522b9-1772200673956.png",
+  thumbnail: "https://images.unsplash.com/photo-1550745165-9bc0b252726f",
   alt: 'Iron mech battle AI reel thumbnail',
   duration: '0:12'
 },
@@ -26,7 +26,7 @@ const demos = [
   title: 'Ancient Forest Spirit',
   category: 'Fantasy',
   views: '3.1M',
-  thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_170445907-1773323951842.png",
+  thumbnail: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e",
   alt: 'Ancient forest spirit fantasy reel',
   duration: '0:18'
 },
@@ -35,7 +35,7 @@ const demos = [
   title: 'Cyberpunk City Chase',
   category: 'Urban',
   views: '1.2M',
-  thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_1ca4a84d0-1773154055139.png",
+  thumbnail: "https://images.unsplash.com/photo-1519608487953-e999c86e7455",
   alt: 'Cyberpunk city chase reel',
   duration: '0:14'
 },
@@ -44,7 +44,7 @@ const demos = [
   title: 'Dragon Fire Storm',
   category: 'Fantasy',
   views: '4.7M',
-  thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_13a3ae503-1764674109007.png",
+  thumbnail: "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e",
   alt: 'Dragon fire storm fantasy reel',
   duration: '0:16'
 },
@@ -53,7 +53,7 @@ const demos = [
   title: 'Space Titan War',
   category: 'Sci-Fi',
   views: '2.9M',
-  thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_1e64bf69a-1772205033891.png",
+  thumbnail: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa",
   alt: 'Space titan war sci-fi reel',
   duration: '0:13'
 }];
@@ -63,16 +63,7 @@ const DemoPreview: React.FC = () => {
   const [playing, setPlaying] = useState<number | null>(null);
   const sectionRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {if (e.isIntersecting) e.target.classList.add('visible');});
-      },
-      { threshold: 0.1 }
-    );
-    sectionRef.current?.querySelectorAll('.reveal, .reveal-left, .reveal-right').forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, []);
+  // Using the shared scroll reveal observer from the parent page
 
   return (
     <section ref={sectionRef} className="py-20 px-4 sm:px-6" style={{ background: 'linear-gradient(to bottom, #0D0505, #120404, #0D0505)' }}>

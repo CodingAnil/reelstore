@@ -16,6 +16,7 @@ export interface Bundle {
   status: 'draft' | 'active' | 'inactive';
   isFeatured: boolean;
   downloadUrl: string;
+  mediaMetadata: Record<string, any>;
   createdAt: string;
   updatedAt: string;
 }
@@ -27,6 +28,7 @@ export interface Category {
   demoVideoUrl: string;
   description: string;
   status: 'active' | 'inactive';
+  mediaMetadata: Record<string, any>;
   createdAt: string;
   updatedAt: string;
 }
@@ -74,6 +76,7 @@ function mapBundle(row: Record<string, unknown>): Bundle {
     status: (row.status as 'draft' | 'active' | 'inactive') || 'draft',
     isFeatured: Boolean(row.is_featured),
     downloadUrl: (row.download_url as string) || '',
+    mediaMetadata: (row.media_metadata as Record<string, any>) || {},
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -87,6 +90,7 @@ function mapCategory(row: Record<string, unknown>): Category {
     demoVideoUrl: (row.demo_video_url as string) || '',
     description: (row.description as string) || '',
     status: (row.status as 'active' | 'inactive') || 'active',
+    mediaMetadata: (row.media_metadata as Record<string, any>) || {},
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -113,10 +117,22 @@ function mapOrder(row: Record<string, unknown>): Order {
   };
 }
 
+// ─── CACHE MANAGEMENT ────────────────────────────────────────────────────────
+const cache = {
+  bundles: { data: null as Bundle[] | null, expiry: 0 },
+  categories: { data: null as Category[] | null, expiry: 0 },
+};
+const CACHE_STALE_TIME = 1000 * 60 * 5; // 5 minutes
+
 // ─── BUNDLE SERVICE ────────────────────────────────────────────────────────────
 
 export const bundleService = {
   async getActiveBundles(): Promise<Bundle[]> {
+    const now = Date.now();
+    if (cache.bundles.data && cache.bundles.expiry > now) {
+      return cache.bundles.data;
+    }
+
     const supabase = createClient();
     const { data, error } = await supabase
       .from('bundles')
@@ -129,10 +145,19 @@ export const bundleService = {
       console.error('Error fetching active bundles:', error.message);
       return [];
     }
-    return (data || []).map((row) => mapBundle(row as Record<string, unknown>));
+    const results = (data || []).map((row) => mapBundle(row as Record<string, unknown>));
+    cache.bundles = { data: results, expiry: now + CACHE_STALE_TIME };
+    return results;
   },
 
   async getFeaturedBundle(): Promise<Bundle | null> {
+    const now = Date.now();
+    // Sort through cached bundles first if they exist
+    if (cache.bundles.data && cache.bundles.expiry > now) {
+      const featured = cache.bundles.data.find(b => b.isFeatured && b.status === 'active');
+      if (featured) return featured;
+    }
+
     const supabase = createClient();
     const { data, error } = await supabase
       .from('bundles')
@@ -151,6 +176,13 @@ export const bundleService = {
   },
 
   async getBundleById(id: string): Promise<Bundle | null> {
+    const now = Date.now();
+    // Check cache first
+    if (cache.bundles.data && cache.bundles.expiry > now) {
+      const found = cache.bundles.data.find(b => b.id === id);
+      if (found) return found;
+    }
+
     const supabase = createClient();
     const { data, error } = await supabase
       .from('bundles')
@@ -198,6 +230,7 @@ export const bundleService = {
         status: bundle.status,
         is_featured: bundle.isFeatured,
         download_url: bundle.downloadUrl,
+        media_metadata: bundle.mediaMetadata || {},
       })
       .select()
       .maybeSingle();
@@ -226,6 +259,7 @@ export const bundleService = {
     if (bundle.status !== undefined) updateData.status = bundle.status;
     if (bundle.isFeatured !== undefined) updateData.is_featured = bundle.isFeatured;
     if (bundle.downloadUrl !== undefined) updateData.download_url = bundle.downloadUrl;
+    if (bundle.mediaMetadata !== undefined) updateData.media_metadata = bundle.mediaMetadata;
 
     const { data, error } = await supabase
       .from('bundles')
@@ -256,6 +290,11 @@ export const bundleService = {
 
 export const categoryService = {
   async getActiveCategories(): Promise<Category[]> {
+    const now = Date.now();
+    if (cache.categories.data && cache.categories.expiry > now) {
+      return cache.categories.data;
+    }
+
     const supabase = createClient();
     const { data, error } = await supabase
       .from('categories')
@@ -267,7 +306,9 @@ export const categoryService = {
       console.error('Error fetching active categories:', error.message);
       return [];
     }
-    return (data || []).map((row) => mapCategory(row as Record<string, unknown>));
+    const results = (data || []).map((row) => mapCategory(row as Record<string, unknown>));
+    cache.categories = { data: results, expiry: now + CACHE_STALE_TIME };
+    return results;
   },
 
   async getAllCategories(): Promise<Category[]> {
@@ -294,6 +335,7 @@ export const categoryService = {
         demo_video_url: category.demoVideoUrl,
         description: category.description,
         status: category.status,
+        media_metadata: category.mediaMetadata || {},
       })
       .select()
       .maybeSingle();
@@ -313,6 +355,7 @@ export const categoryService = {
     if (category.demoVideoUrl !== undefined) updateData.demo_video_url = category.demoVideoUrl;
     if (category.description !== undefined) updateData.description = category.description;
     if (category.status !== undefined) updateData.status = category.status;
+    if (category.mediaMetadata !== undefined) updateData.media_metadata = category.mediaMetadata;
 
     const { data, error } = await supabase
       .from('categories')

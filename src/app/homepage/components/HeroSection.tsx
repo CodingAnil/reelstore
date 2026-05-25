@@ -148,17 +148,17 @@ const HeroSection: React.FC = () => {
                 {/* Product mockup or phone mockups */}
                 {bundle?.mockupImageUrl ? (
                   <div className="px-4 mb-3">
-                    <AppImage src={bundle.mockupImageUrl} alt={`${bundle.name} product mockup`} width={300} height={200} className="w-full object-cover rounded-xl" />
+                    <AppImage src={bundle.mockupImageUrl} alt={`${bundle.name} product mockup`} width={300} height={200} priority={true} className="w-full object-cover rounded-xl" />
                   </div>
                 ) : (
                   <div className="px-4 flex gap-2 justify-center mb-3">
                     {[
-                      { src: 'https://img.rocket.new/generatedImages/rocket_gen_img_158fd849c-1772149426782.png', alt: 'AI creature reel preview' },
-                      { src: 'https://img.rocket.new/generatedImages/rocket_gen_img_136b034dc-1767084882465.png', alt: 'AI robot reel preview' },
-                      { src: 'https://img.rocket.new/generatedImages/rocket_gen_img_158fd849c-1772149426782.png', alt: 'AI fantasy reel preview' },
+                      { src: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe', alt: 'AI creature reel preview' },
+                      { src: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee', alt: 'AI robot reel preview' },
+                      { src: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e', alt: 'AI fantasy reel preview' },
                     ].map((item, i) => (
                       <div key={i} className="phone-mockup flex-1" style={{ aspectRatio: '9/16', transform: i === 1 ? 'scale(1.08)' : i === 0 ? 'rotate(-3deg)' : 'rotate(3deg)', zIndex: i === 1 ? 2 : 1 }}>
-                        <AppImage src={item.src} alt={item.alt} width={120} height={213} className="w-full h-full object-cover" />
+                        <AppImage src={item.src} alt={item.alt} width={120} height={213} priority={true} className="w-full h-full object-cover" />
                       </div>
                     ))}
                   </div>
