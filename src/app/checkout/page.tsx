@@ -61,7 +61,9 @@ function CheckoutContent() {
   const [bundle, setBundle] = useState<Bundle | null>(null);
   const [bundleLoading, setBundleLoading] = useState(true);
   const [orderError, setOrderError] = useState('');
-  const [paymentState, setPaymentState] = useState<'idle' | 'success' | 'failed' | 'cancelled'>('idle');
+  const [paymentState, setPaymentState] = useState<'idle' | 'success' | 'failed' | 'cancelled'>(
+    'idle'
+  );
 
   // Prevent duplicate submissions
   const isProcessing = useRef(false);
@@ -95,7 +97,10 @@ function CheckoutContent() {
             window.location.href = `/download?order=${verifyData.orderId}`;
           } else {
             setPaymentState('failed');
-            setOrderError(verifyData.error || 'Payment verification failed. Please check your bank and try again.');
+            setOrderError(
+              verifyData.error ||
+                'Payment verification failed. Please check your bank and try again.'
+            );
           }
         } catch (err) {
           console.error('Return verification error:', err);
@@ -111,8 +116,10 @@ function CheckoutContent() {
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
     if (!form.name.trim()) newErrors.name = 'Name is required';
-    if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) newErrors.email = 'Valid email required';
-    if (!form.phone.trim() || form.phone.length < 10) newErrors.phone = 'Valid 10-digit phone required';
+    if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email))
+      newErrors.email = 'Valid email required';
+    if (!form.phone.trim() || form.phone.length < 10)
+      newErrors.phone = 'Valid 10-digit phone required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -132,7 +139,9 @@ function CheckoutContent() {
       // ── Load Cashfree SDK ───────────────────────────────────────────────────
       const sdkLoaded = await loadCashfreeScript();
       if (!sdkLoaded) {
-        setOrderError('Payment service could not be loaded. Please check your internet connection.');
+        setOrderError(
+          'Payment service could not be loaded. Please check your internet connection.'
+        );
         setLoading(false);
         isProcessing.current = false;
         return;
@@ -166,10 +175,10 @@ function CheckoutContent() {
 
       // ── Initialize Cashfree ────────────────────────────────────────────────
       // Use environment returned from backend to guarantee matching environments
-          const isProd = process.env.CASHFREE_ENV === 'PRODUCTION';
+      const isProd = process.env.CASHFREE_ENV === 'PRODUCTION';
 
       const cashfree = window.Cashfree({
-        mode: orderData.environment || 'sandbox',
+        mode: isProd ? 'production' : 'sandbox',
       });
 
       // ── Open Cashfree Checkout ─────────────────────────────────────────────
@@ -177,7 +186,7 @@ function CheckoutContent() {
         paymentSessionId: orderData.payment_session_id,
         redirectTarget: '_self', // Use self to return to this page for verification
       });
-      
+
       // Note: Loading state remains true until redirection or error
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An unexpected error occurred.';
@@ -194,13 +203,18 @@ function CheckoutContent() {
   return (
     <div
       className="min-h-screen bg-bg text-fg"
-      style={{ background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(139,26,26,0.4) 0%, #0D0505 60%)' }}
+      style={{
+        background:
+          'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(139,26,26,0.4) 0%, #0D0505 60%)',
+      }}
     >
       {/* Header */}
       <header className="py-5 px-4 sm:px-6 border-b border-accent/10 flex items-center justify-between max-w-5xl mx-auto">
         <Link href="/homepage" className="flex items-center gap-2">
           <AppLogo size={32} />
-          <span className="font-display font-800 text-lg text-accent hidden sm:block">ReelStore Technologies</span>
+          <span className="font-display font-800 text-lg text-accent hidden sm:block">
+            ReelStore Technologies
+          </span>
         </Link>
         <div className="flex items-center gap-2 text-fg-dim text-sm">
           <Icon name="LockClosedIcon" size={14} className="text-green-400" />
@@ -212,7 +226,9 @@ function CheckoutContent() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           {/* Left: Form */}
           <div>
-            <h1 className="font-display font-900 text-2xl sm:text-3xl text-fg mb-2">Complete Your Order</h1>
+            <h1 className="font-display font-900 text-2xl sm:text-3xl text-fg mb-2">
+              Complete Your Order
+            </h1>
             <p className="text-fg-dim text-sm mb-8">Fill in your details to get instant access</p>
 
             {/* Error / state banners */}
@@ -238,7 +254,9 @@ function CheckoutContent() {
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Name */}
               <div>
-                <label className="block text-fg-muted text-sm font-600 mb-1.5 font-display">Full Name</label>
+                <label className="block text-fg-muted text-sm font-600 mb-1.5 font-display">
+                  Full Name
+                </label>
                 <input
                   type="text"
                   placeholder="Priya Sharma"
@@ -251,7 +269,9 @@ function CheckoutContent() {
 
               {/* Email */}
               <div>
-                <label className="block text-fg-muted text-sm font-600 mb-1.5 font-display">Email Address</label>
+                <label className="block text-fg-muted text-sm font-600 mb-1.5 font-display">
+                  Email Address
+                </label>
                 <input
                   type="email"
                   placeholder="priya@gmail.com"
@@ -265,7 +285,9 @@ function CheckoutContent() {
 
               {/* Phone */}
               <div>
-                <label className="block text-fg-muted text-sm font-600 mb-1.5 font-display">Phone Number</label>
+                <label className="block text-fg-muted text-sm font-600 mb-1.5 font-display">
+                  Phone Number
+                </label>
                 <div className="flex gap-2">
                   <div className="input-dark rounded-xl px-3 py-3.5 text-fg-dim text-sm flex items-center gap-1 flex-shrink-0">
                     <span>🇮🇳</span>
@@ -313,17 +335,26 @@ function CheckoutContent() {
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
                     </svg>
                     {paymentState === 'success' ? 'Redirecting...' : 'Processing...'}
                   </span>
                 ) : (
                   <>
                     <Icon name="LockClosedIcon" size={18} className="text-white" />
-                    <span>
-                      Pay ₹{bundle?.offerPrice ?? 79} with Cashfree
-                    </span>
+                    <span>Pay ₹{bundle?.offerPrice ?? 79} with Cashfree</span>
                   </>
                 )}
               </button>
@@ -343,7 +374,10 @@ function CheckoutContent() {
           <div className="lg:sticky lg:top-8">
             <div
               className="glass rounded-3xl p-6 relative overflow-hidden"
-              style={{ border: '1px solid rgba(201,168,76,0.3)', boxShadow: '0 0 40px rgba(201,168,76,0.1)' }}
+              style={{
+                border: '1px solid rgba(201,168,76,0.3)',
+                boxShadow: '0 0 40px rgba(201,168,76,0.1)',
+              }}
             >
               {bundleLoading ? (
                 <div className="animate-pulse space-y-4">
@@ -356,7 +390,10 @@ function CheckoutContent() {
                 <>
                   {/* Product image */}
                   {bundle.thumbnailUrl && (
-                    <div className="relative rounded-2xl overflow-hidden mb-6" style={{ aspectRatio: '16/9' }}>
+                    <div
+                      className="relative rounded-2xl overflow-hidden mb-6"
+                      style={{ aspectRatio: '16/9' }}
+                    >
                       <AppImage
                         src={bundle.thumbnailUrl}
                         alt={`${bundle.name} product preview`}
@@ -371,14 +408,20 @@ function CheckoutContent() {
                     </div>
                   )}
 
-                  <h2 className="font-display font-900 text-xl text-fg mb-1">{bundle.name || 'Creative Assets Pack'}</h2>
-                  <p className="text-fg-dim text-sm mb-6">{bundle.shortDescription || 'Professional Digital Marketing Content Kit'}</p>
+                  <h2 className="font-display font-900 text-xl text-fg mb-1">
+                    {bundle.name || 'Creative Assets Pack'}
+                  </h2>
+                  <p className="text-fg-dim text-sm mb-6">
+                    {bundle.shortDescription || 'Professional Digital Marketing Content Kit'}
+                  </p>
 
                   {/* Price breakdown */}
                   <div className="space-y-3 mb-6 pb-6 border-b border-accent/10">
                     <div className="flex justify-between text-sm">
                       <span className="text-fg-muted">Original Price</span>
-                      <span className="price-strike text-fg-dim font-700">₹{bundle.originalPrice.toLocaleString()}</span>
+                      <span className="price-strike text-fg-dim font-700">
+                        ₹{bundle.originalPrice.toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-green-400 font-700">Discount ({discount}% OFF)</span>
@@ -391,8 +434,12 @@ function CheckoutContent() {
                   <div className="flex justify-between items-baseline mb-6">
                     <span className="font-display font-800 text-fg text-lg">Total</span>
                     <div className="text-right">
-                      <span className="font-display font-900 text-3xl text-fg">₹{bundle.offerPrice}</span>
-                      <div className="text-green-400 text-xs font-700">One-time · No subscription</div>
+                      <span className="font-display font-900 text-3xl text-fg">
+                        ₹{bundle.offerPrice}
+                      </span>
+                      <div className="text-green-400 text-xs font-700">
+                        One-time · No subscription
+                      </div>
                     </div>
                   </div>
 
@@ -405,25 +452,32 @@ function CheckoutContent() {
                             <span>{f}</span>
                           </div>
                         ))
-                      : ['Instant Google Drive Access', 'HD Quality No Watermark', 'Lifetime Access', 'Email Confirmation'].map(
-                          (item, i) => (
-                            <div key={i} className="text-fg-muted text-sm">
-                              ✅ {item}
-                            </div>
-                          )
-                        )}
+                      : [
+                          'Instant Google Drive Access',
+                          'HD Quality No Watermark',
+                          'Lifetime Access',
+                          'Email Confirmation',
+                        ].map((item, i) => (
+                          <div key={i} className="text-fg-muted text-sm">
+                            ✅ {item}
+                          </div>
+                        ))}
                   </div>
                 </>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-fg-dim text-sm">Bundle not found. Please go back and try again.</p>
+                  <p className="text-fg-dim text-sm">
+                    Bundle not found. Please go back and try again.
+                  </p>
                 </div>
               )}
 
               {/* Trust */}
               <div className="mt-6 pt-6 border-t border-accent/10 flex items-center justify-center gap-3">
                 <Icon name="ShieldCheckIcon" size={16} className="text-green-400" />
-                <span className="text-fg-dim text-xs">256-bit SSL Encrypted · Cashfree Secured</span>
+                <span className="text-fg-dim text-xs">
+                  256-bit SSL Encrypted · Cashfree Secured
+                </span>
               </div>
             </div>
 
@@ -431,13 +485,19 @@ function CheckoutContent() {
             <div className="glass rounded-2xl p-4 mt-4 border-gold">
               <div className="flex gap-1 mb-2">
                 {[...Array(5)].map((_, i) => (
-                  <svg key={i} viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-accent">
+                  <svg
+                    key={i}
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="w-4 h-4 text-accent"
+                  >
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                   </svg>
                 ))}
               </div>
               <p className="text-fg-muted text-xs leading-relaxed">
-                &ldquo;Bought it, downloaded in 2 minutes, posted 5 reels the same day. 2 of them crossed 50K views!&rdquo;
+                &ldquo;Bought it, downloaded in 2 minutes, posted 5 reels the same day. 2 of them
+                crossed 50K views!&rdquo;
               </p>
               <p className="text-accent text-xs font-700 mt-2">— Rohan Verma, @rohan.creates</p>
             </div>
@@ -454,7 +514,10 @@ export default function Checkout() {
       fallback={
         <div
           className="min-h-screen bg-bg text-fg flex items-center justify-center"
-          style={{ background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(139,26,26,0.4) 0%, #0D0505 60%)' }}
+          style={{
+            background:
+              'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(139,26,26,0.4) 0%, #0D0505 60%)',
+          }}
         >
           <div className="w-10 h-10 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
         </div>
