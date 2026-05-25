@@ -165,9 +165,11 @@ function CheckoutContent() {
       trackBeginCheckout({ value: bundle.offerPrice, currency: 'INR' });
 
       // ── Initialize Cashfree ────────────────────────────────────────────────
-      const isProd = process.env.NEXT_PUBLIC_CASHFREE_ENV === 'PRODUCTION';
+      // Use environment returned from backend to guarantee matching environments
+          const isProd = process.env.CASHFREE_ENV === 'PRODUCTION';
+
       const cashfree = window.Cashfree({
-        mode: isProd ? 'production' : 'sandbox',
+        mode: orderData.environment || 'sandbox',
       });
 
       // ── Open Cashfree Checkout ─────────────────────────────────────────────

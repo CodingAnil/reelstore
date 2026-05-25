@@ -101,6 +101,7 @@ export async function POST(req: NextRequest) {
       payment_session_id: payment_session_id,
       order_id: orderId,
       internal_id: dbOrder.id,
+      environment: isProd ? 'production' : 'sandbox',
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal server error';
