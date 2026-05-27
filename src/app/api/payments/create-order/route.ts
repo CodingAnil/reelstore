@@ -28,9 +28,10 @@ export async function POST(req: NextRequest) {
     }
 
     const orderId = generateCashfreeOrderId();
+    console.log(process.env.CASHFREE_ENV, 'process.env.CASHFREE_ENV');
     const isProd = process.env.CASHFREE_ENV === 'PRODUCTION';
-    const baseUrl = isProd 
-      ? 'https://api.cashfree.com/pg/orders' 
+    const baseUrl = isProd
+      ? 'https://api.cashfree.com/pg/orders'
       : 'https://sandbox.cashfree.com/pg/orders';
 
     // ── Create Cashfree order via REST API (safer than SDK in some envs) ────────
@@ -66,7 +67,10 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       console.error('Cashfree order creation error:', data);
-      return NextResponse.json({ error: data.message || 'Failed to create Cashfree order.' }, { status: response.status });
+      return NextResponse.json(
+        { error: data.message || 'Failed to create Cashfree order.' },
+        { status: response.status }
+      );
     }
 
     const { payment_session_id } = data;

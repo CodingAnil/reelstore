@@ -175,10 +175,11 @@ function CheckoutContent() {
 
       // ── Initialize Cashfree ────────────────────────────────────────────────
       // Use environment returned from backend to guarantee matching environments
-      const isProd = process.env.CASHFREE_ENV === 'PRODUCTION';
+      const mode = orderData.environment || 'sandbox';
 
+      console.log('Initializing Cashfree in mode:', mode);
       const cashfree = window.Cashfree({
-        mode: isProd ? 'production' : 'sandbox',
+        mode: mode,
       });
 
       // ── Open Cashfree Checkout ─────────────────────────────────────────────
