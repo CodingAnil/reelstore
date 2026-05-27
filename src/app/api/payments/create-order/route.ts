@@ -34,6 +34,8 @@ export async function POST(req: NextRequest) {
       ? 'https://api.cashfree.com/pg/orders'
       : 'https://sandbox.cashfree.com/pg/orders';
 
+    const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL;
+
     // ── Create Cashfree order via REST API (safer than SDK in some envs) ────────
     const requestBody = {
       order_amount: Number(amount),
@@ -45,8 +47,8 @@ export async function POST(req: NextRequest) {
         customer_name: customerName || 'Customer',
       },
       order_meta: {
-        return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/checkout?order_id=${orderId}`,
-        notify_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/payments/webhook`,
+        return_url: `${origin}/checkout?order_id={order_id}`,
+        notify_url: `${origin}/api/payments/webhook`,
       },
       order_note: `Bundle: ${bundleName}`,
       order_id: orderId,
